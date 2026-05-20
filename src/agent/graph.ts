@@ -1,0 +1,337 @@
+import { Annotation, MessagesAnnotation, MemorySaver, StateGraph, START, END, interrupt } from '@langchain/langgraph';
+import { AIMessage, SystemMessage, ToolMessage } from '@langchain/core/messages';
+import { z } from 'zod';
+import { gemini } from '../lib/gemini';
+import { EventQueue } from './eventQueue';
+import { SECTOR_COORDS } from '../data/sectors';
+import { SERVICE_CATEGORIES } from '../data/providers';
+import { Booking } from '../schemas/booking';
+import { 
+  searchProviders, rankByDistance, checkAvailability, confirmBooking, scheduleReminder,
+  resolveBookingTarget, proposeBookingChange, proposeBookingCancellation, answerBookingQuery
+} from './tools';
+import { ToolNode } from '@langchain/langgraph/prebuilt';
+
+export const AgentState = Annotation.Root({
+  ...MessagesAnnotation.spec,
+  intent: Annotation<any>({
+    reducer: (old, updated) => updated ?? old,
+    default: () => null,
+  }),
+  flow: Annotation<string>({
+    reducer: (old, updated) => updated ?? old,
+    default: () => 'new_booking',
+  })
+});
+
+const IntentSchema = z.object({
+  service: z.enum(SERVICE_CATEGORIES as [string, ...string[]]).optional(),
+  location: z.string().optional(),
+  time: z.string().optional(),
+});
+
+const IntentClassifierSchema = z.object({
+  intent: z.enum(['new_booking', 'modify_booking', 'cancel_booking', 'query_booking']),
+  reasoning: z.string(),
+});
+
+const newBookingTools = [searchProviders, rankByDistance, checkAvailability, confirmBooking, scheduleReminder];
+const modifyTools = [resolveBookingTarget, proposeBookingChange];
+const cancelTools = [resolveBookingTarget, proposeBookingCancellation];
+const queryTools = [resolveBookingTarget, answerBookingQuery];
+
+const toolNode = new ToolNode([...newBookingTools, ...modifyTools, ...cancelTools, ...queryTools]);
+
+const newBookingModel = gemini.bindTools(newBookingTools);
+const modifyModel = gemini.bindTools(modifyTools);
+const cancelModel = gemini.bindTools(cancelTools);
+const queryModel = gemini.bindTools(queryTools);
+
+function bookingsSummary(bookings: Booking[]): string {
+  if (!bookings.length) return '(no bookings)';
+  return bookings.map((b, i) =>
+    `${i + 1}. id=${b.id} | ${b.category} with ${b.providerName} | ${b.scheduledFor} | status=${b.status}`
+  ).join('\n');
+}
+
+async function classifyIntent(state: typeof AgentState.State, config: any) {
+  const queue = config.configurable?.eventQueue as EventQueue;
+  const bookings = config.configurable?.bookings as Booking[] || [];
+  
+  const lastMsg = state.messages[state.messages.length - 1];
+  
+  const structuredModel = gemini.withStructuredOutput(IntentClassifierSchema);
+  const prompt = `You are a router. Classify the user's intent into one of: 'new_booking', 'modify_booking', 'cancel_booking', 'query_booking'.
+User message: "${lastMsg.content}"
+User's existing bookings: ${JSON.stringify(bookings, null, 2)}
+Return your reasoning in a brief sentence.`;
+
+  const result = await structuredModel.invoke(prompt);
+  queue.push({ type: 'thought', text: `Classified intent as ${result.intent}: ${result.reasoning}` });
+  
+  return { flow: result.intent };
+}
+
+async function intentExtraction(state: typeof AgentState.State, config: any) {
+  const queue = config.configurable?.eventQueue as EventQueue;
+  const defaultLocation = config.configurable?.defaultLocation as string | undefined;
+  
+  const textMessages = state.messages
+    .filter(m => m.getType() === 'human' || m.getType() === 'ai')
+    .map(m => `${m.getType()}: ${m.content}`)
+    .join("\n");
+  
+  const structuredModel = gemini.withStructuredOutput(IntentSchema);
+  const prompt = `You are an intent extraction agent for an AI service orchestrator in Islamabad.
+Extract the following fields from the conversation history. Only extract if explicitly stated or inferred safely.
+- service: Must be one of [${SERVICE_CATEGORIES.join(', ')}].
+- location: Extract any sector mentioned (e.g. "G-13", "F-10").
+- time: Extract any time reference (e.g. "tomorrow morning").
+
+Conversation history:
+${textMessages}`;
+
+  const extracted = await structuredModel.invoke(prompt);
+
+  let usedDefaultLocation = false;
+  if (!extracted.location && defaultLocation) {
+    extracted.location = defaultLocation;
+    usedDefaultLocation = true;
+  }
+
+  if (extracted.location) {
+    extracted.location = extracted.location.toUpperCase();
+  }
+
+  queue.push({
+    type: 'understanding',
+    extracted: {
+      service: extracted.service || null,
+      location: extracted.location || null,
+      time: extracted.time || null,
+      resolvedSlot: null,
+    },
+    usedDefaultLocation,
+  });
+
+  return { intent: extracted };
+}
+
+async function gate(state: typeof AgentState.State, config: any) {
+  const queue = config.configurable?.eventQueue as EventQueue;
+  const extracted = state.intent;
+
+  if (!extracted || !extracted.service || !extracted.location || !extracted.time || !SECTOR_COORDS[extracted.location]) {
+    if (!extracted?.service) {
+      queue.push({ type: 'awaiting_user', missing: 'service', question: 'What service do you need? (AC repair, plumber, electrician, tutor, beautician)' });
+    } else if (!extracted?.location || !SECTOR_COORDS[extracted.location]) {
+      queue.push({ type: 'awaiting_user', missing: 'location', question: 'Which sector are you in?' });
+    } else if (!extracted?.time) {
+      queue.push({ type: 'awaiting_user', missing: 'time', question: 'When do you need this?' });
+    }
+    
+    interrupt("Missing fields");
+  }
+
+  return {};
+}
+
+async function newBookingAgent(state: typeof AgentState.State, config: any) {
+  const queue = config.configurable?.eventQueue as EventQueue;
+  const sysMsg = new SystemMessage(`You are a helpful AI orchestrator finding and booking services.
+Before each tool call, briefly state in 1 sentence what you're about to do and why.
+Before calling confirmBooking, look at the ranked list you got from rankByDistance and write a 2-3 sentence reasoning that compares the top pick against the alternatives based on distance and rating. Pass that string as the reasoning arg.
+Do not ask the user for confirmation before booking. Just book it.`);
+  
+  const response = await newBookingModel.invoke([sysMsg, ...state.messages]);
+  
+  if (response.content && typeof response.content === 'string' && response.content.trim()) {
+    queue.push({ type: 'thought', text: response.content.trim() });
+  }
+
+  return { messages: [response] };
+}
+
+async function modifyAgent(state: typeof AgentState.State, config: any) {
+  const queue = config.configurable?.eventQueue as EventQueue;
+  const bookings = config.configurable?.bookings as Booking[] || [];
+  
+  if (bookings.length === 0) {
+    queue.push({ type: 'thought', text: "User asked to modify a booking but I don't see any in their history." });
+    queue.push({ type: 'awaiting_user', missing: 'service', question: "You don't have any bookings yet — would you like to make one?" });
+    interrupt("Missing bookings");
+    return {};
+  }
+
+  const sysMsg = new SystemMessage(`You are a helpful AI orchestrator modifying an existing booking.
+The user's active bookings:
+${bookingsSummary(bookings)}
+
+Use resolveBookingTarget with the user's phrasing to pick the right one. Then determine what the user wants to change (time, slot, day). If they're rescheduling, compute the new scheduledTimestamp. Call proposeBookingChange with the changes + a 1-sentence reason.
+Before each tool call, briefly state in 1 sentence what you're about to do and why.`);
+
+  const response = await modifyModel.invoke([sysMsg, ...state.messages]);
+  if (response.content && typeof response.content === 'string' && response.content.trim()) {
+    queue.push({ type: 'thought', text: response.content.trim() });
+  }
+
+  const lastTool = [...state.messages].reverse().find(m => m.getType() === 'tool') as ToolMessage | undefined;
+  if (lastTool && lastTool.name === 'resolveBookingTarget') {
+    const parsed = typeof lastTool.content === 'string' ? JSON.parse(lastTool.content) : lastTool.content;
+    if (!parsed.bookingId) {
+      queue.push({
+        type: 'awaiting_user',
+        missing: 'service',
+        question: response.content && typeof response.content === 'string'
+          ? response.content
+          : 'Which booking did you mean?',
+      });
+      interrupt('Ambiguous target');
+    }
+  }
+
+  return { messages: [response] };
+}
+
+async function cancelAgent(state: typeof AgentState.State, config: any) {
+  const queue = config.configurable?.eventQueue as EventQueue;
+  const bookings = config.configurable?.bookings as Booking[] || [];
+  
+  if (bookings.length === 0) {
+    queue.push({ type: 'thought', text: "User asked to cancel a booking but I don't see any in their history." });
+    queue.push({ type: 'awaiting_user', missing: 'service', question: "You don't have any bookings yet — would you like to make one?" });
+    interrupt("Missing bookings");
+    return {};
+  }
+
+  const sysMsg = new SystemMessage(`You are a helpful AI orchestrator canceling an existing booking.
+The user's active bookings:
+${bookingsSummary(bookings)}
+
+Use resolveBookingTarget with the user's phrasing to pick the right one. Confirm intent via a thought (no awaiting_user — the user already said cancel). Call proposeBookingCancellation with a 1-sentence reason.
+Before each tool call, briefly state in 1 sentence what you're about to do and why.`);
+
+  const response = await cancelModel.invoke([sysMsg, ...state.messages]);
+  if (response.content && typeof response.content === 'string' && response.content.trim()) {
+    queue.push({ type: 'thought', text: response.content.trim() });
+  }
+
+  const lastTool = [...state.messages].reverse().find(m => m.getType() === 'tool') as ToolMessage | undefined;
+  if (lastTool && lastTool.name === 'resolveBookingTarget') {
+    const parsed = typeof lastTool.content === 'string' ? JSON.parse(lastTool.content) : lastTool.content;
+    if (!parsed.bookingId) {
+      queue.push({
+        type: 'awaiting_user',
+        missing: 'service',
+        question: response.content && typeof response.content === 'string'
+          ? response.content
+          : 'Which booking did you mean?',
+      });
+      interrupt('Ambiguous target');
+    }
+  }
+  
+  return { messages: [response] };
+}
+
+async function queryAgent(state: typeof AgentState.State, config: any) {
+  const queue = config.configurable?.eventQueue as EventQueue;
+  const bookings = config.configurable?.bookings as Booking[] || [];
+  
+  if (bookings.length === 0) {
+    queue.push({ type: 'thought', text: "User asked about a booking but I don't see any in their history." });
+    queue.push({ type: 'awaiting_user', missing: 'service', question: "You don't have any bookings yet — would you like to make one?" });
+    interrupt("Missing bookings");
+    return {};
+  }
+
+  const sysMsg = new SystemMessage(`You are a helpful AI orchestrator answering questions about an existing booking.
+The user's active bookings:
+${bookingsSummary(bookings)}
+
+Use resolveBookingTarget with the user's phrasing to pick the right one. Generate a 2-3 sentence summary answering the user's question using the booking data. Call answerBookingQuery with the summary.
+Before each tool call, briefly state in 1 sentence what you're about to do and why.`);
+
+  const response = await queryModel.invoke([sysMsg, ...state.messages]);
+  if (response.content && typeof response.content === 'string' && response.content.trim()) {
+    queue.push({ type: 'thought', text: response.content.trim() });
+  }
+
+  const lastTool = [...state.messages].reverse().find(m => m.getType() === 'tool') as ToolMessage | undefined;
+  if (lastTool && lastTool.name === 'resolveBookingTarget') {
+    const parsed = typeof lastTool.content === 'string' ? JSON.parse(lastTool.content) : lastTool.content;
+    if (!parsed.bookingId) {
+      queue.push({
+        type: 'awaiting_user',
+        missing: 'service',
+        question: response.content && typeof response.content === 'string'
+          ? response.content
+          : 'Which booking did you mean?',
+      });
+      interrupt('Ambiguous target');
+    }
+  }
+  
+  return { messages: [response] };
+}
+
+function routeAfterClassify(state: typeof AgentState.State) {
+  const flow = state.flow || 'new_booking';
+  if (flow === 'new_booking') return 'intent_extraction';
+  if (flow === 'modify_booking') return 'modifyAgent';
+  if (flow === 'cancel_booking') return 'cancelAgent';
+  if (flow === 'query_booking') return 'queryAgent';
+  return 'intent_extraction';
+}
+
+function routeAfterGate(state: typeof AgentState.State) {
+  const ext = state.intent;
+  if (!ext || !ext.service || !ext.location || !ext.time || !SECTOR_COORDS[ext.location]) {
+    return "intent_extraction";
+  }
+  return "newBookingAgent";
+}
+
+function routeAfterAgent(state: typeof AgentState.State) {
+  const last = state.messages[state.messages.length - 1];
+  if (last.getType() === "ai" && (last as AIMessage).tool_calls?.length) {
+    return "tools";
+  }
+  return END;
+}
+
+function routeAfterTools(state: typeof AgentState.State) {
+  // Return to the correct agent based on flow
+  const flow = state.flow || 'new_booking';
+  if (flow === 'new_booking') return 'newBookingAgent';
+  if (flow === 'modify_booking') return 'modifyAgent';
+  if (flow === 'cancel_booking') return 'cancelAgent';
+  if (flow === 'query_booking') return 'queryAgent';
+  return 'newBookingAgent';
+}
+
+const workflow = new StateGraph(AgentState)
+  .addNode("classifyIntent", classifyIntent)
+  .addNode("intent_extraction", intentExtraction)
+  .addNode("gate", gate)
+  .addNode("newBookingAgent", newBookingAgent)
+  .addNode("modifyAgent", modifyAgent)
+  .addNode("cancelAgent", cancelAgent)
+  .addNode("queryAgent", queryAgent)
+  .addNode("tools", toolNode)
+
+  .addEdge(START, "classifyIntent")
+  .addConditionalEdges("classifyIntent", routeAfterClassify)
+  
+  .addEdge("intent_extraction", "gate")
+  .addConditionalEdges("gate", routeAfterGate)
+  
+  .addConditionalEdges("newBookingAgent", routeAfterAgent)
+  .addConditionalEdges("modifyAgent", routeAfterAgent)
+  .addConditionalEdges("cancelAgent", routeAfterAgent)
+  .addConditionalEdges("queryAgent", routeAfterAgent)
+  
+  .addConditionalEdges("tools", routeAfterTools);
+
+const checkpointer = new MemorySaver();
+export const graph = workflow.compile({ checkpointer });
