@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import { handleSuccess, handleError } from './lib/responseHandler';
 import { chatRouter } from './routes/chat';
+import { logger } from './lib/logger';
 import cors from 'cors';
 
 const app = express();
@@ -16,21 +17,21 @@ app.get('/health', (_req: Request, res: Response) => {
 app.use('/chat', chatRouter);
 
 if (!process.env.PORT) {
-  console.error('[server] FATAL ERROR: PORT environment variable is missing.');
+  logger.error('FATAL ERROR: PORT environment variable is missing.');
   process.exit(1);
 }
 
 const PORT = Number(process.env.PORT);
 if (isNaN(PORT) || PORT <= 0 || !Number.isInteger(PORT)) {
-  console.error('[server] FATAL ERROR: PORT environment variable must be a valid positive integer.');
+  logger.error('FATAL ERROR: PORT environment variable must be a valid positive integer.');
   process.exit(1);
 }
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('[server] Unhandled Error:', err);
+  logger.error('Unhandled error', err);
   return handleError(res, 500, 'Internal Server Error');
 });
 
 app.listen(PORT, () => {
-  console.log(`[server] listening on http://localhost:${PORT}`);
+  logger.info(`Listening on http://localhost:${PORT}`);
 });

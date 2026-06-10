@@ -5,6 +5,7 @@ import { getOrCreateSession } from './sessions';
 import { HumanMessage } from '@langchain/core/messages';
 import { GraphInterrupt } from '@langchain/langgraph';
 import { Booking } from '../schemas/booking';
+import { logger } from '../lib/logger';
 import * as crypto from 'crypto';
 
 export async function* runAgent(input: { message: string, sessionId?: string, defaultLocation?: string, bookings?: Booking[] }): AsyncGenerator<AgentEvent> {
@@ -39,7 +40,7 @@ export async function* runAgent(input: { message: string, sessionId?: string, de
       if (err && (err instanceof GraphInterrupt || err.name === 'GraphInterrupt')) {
         // Expected interrupt, graph pauses cleanly
       } else {
-        console.error('[server] Graph execution error:', err);
+        logger.error('Graph execution error', err);
       }
     } finally {
       queue.end();
