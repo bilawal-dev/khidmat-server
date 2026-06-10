@@ -7,6 +7,7 @@ import * as crypto from 'crypto';
 import { gemini } from '../lib/gemini';
 import { Booking } from '../schemas/booking';
 import { EARTH_RADIUS_KM, REMINDER_LEAD_MS } from '../config/constants';
+import { slotMatchesPreference, parseSlotTo24h, dayLabelToOffset } from '../lib/time';
 
 function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const R = EARTH_RADIUS_KM;
@@ -66,39 +67,15 @@ export const checkAvailability = tool(
     const provider = providers.find(p => p.id === providerId);
     if (!provider) return null;
 
-    let pickedSlot = provider.availableSlots[0];
-    for (const slot of provider.availableSlots) {
-      const isPM = slot.toLowerCase().includes('pm');
-      const isAM = slot.toLowerCase().includes('am');
-      const match = slot.match(/(\d+)/);
-      const hour = match ? parseInt(match[1]) : 12;
-      
-      if (slotPreference === 'morning' && isAM && hour >= 6 && hour < 12) { pickedSlot = slot; break; }
-      if (slotPreference === 'afternoon' && isPM && (hour === 12 || hour < 5)) { pickedSlot = slot; break; }
-      if (slotPreference === 'evening' && isPM && (hour >= 5 && hour < 12)) { pickedSlot = slot; break; }
-    }
-
-    let daysOffset = 1;
-    if (dayLabel === 'Today') daysOffset = 0;
-    else if (dayLabel === 'Tomorrow') daysOffset = 1;
-    else {
-      const Capitalized = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const idx = Capitalized.indexOf(dayLabel);
-      if (idx !== -1) {
-        const today = new Date().getDay();
-        daysOffset = ((idx - today + 7) % 7) || 7;
-      }
-    }
+    const pickedSlot = provider.availableSlots.find(slot => slotMatchesPreference(slot, slotPreference))
+      ?? provider.availableSlots[0];
 
     const d = new Date();
-    d.setDate(d.getDate() + daysOffset);
-    const m = pickedSlot.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-    if (m) {
-      let h = parseInt(m[1]);
-      const min = parseInt(m[2]);
-      if (m[3].toUpperCase() === 'PM' && h !== 12) h += 12;
-      if (m[3].toUpperCase() === 'AM' && h === 12) h = 0;
-      d.setHours(h, min, 0, 0);
+    d.setDate(d.getDate() + dayLabelToOffset(dayLabel, d.getDay()));
+
+    const parsed = parseSlotTo24h(pickedSlot);
+    if (parsed) {
+      d.setHours(parsed.hour, parsed.minute, 0, 0);
     }
 
     return { slot: pickedSlot, scheduledTimestamp: d.getTime() };
