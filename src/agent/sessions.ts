@@ -1,4 +1,5 @@
 import { RunnableConfig } from '@langchain/core/runnables';
+import { SESSION_TTL_MS, SESSION_SWEEP_INTERVAL_MS } from '../config/constants';
 
 type Session = {
   config: RunnableConfig;
@@ -24,12 +25,12 @@ export function getOrCreateSession(sessionId: string): { config: RunnableConfig,
   return { config: session.config, isNew };
 }
 
-// Evict sessions older than 1 hour
+// Evict sessions that have been idle past their TTL.
 setInterval(() => {
   const now = Date.now();
   for (const [id, session] of sessions.entries()) {
-    if (now - session.lastAccessed > 60 * 60 * 1000) {
+    if (now - session.lastAccessed > SESSION_TTL_MS) {
       sessions.delete(id);
     }
   }
-}, 15 * 60 * 1000).unref();
+}, SESSION_SWEEP_INTERVAL_MS).unref();
