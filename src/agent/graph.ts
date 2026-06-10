@@ -54,6 +54,39 @@ function bookingsSummary(bookings: Booking[]): string {
   ).join('\n');
 }
 
+/**
+ * Shared guard for the modify/cancel/query flows: when the user has no bookings,
+ * surface a friendly nudge and pause the graph. `thought` lets each flow phrase
+ * what the user was trying to do.
+ */
+function interruptNoBookings(queue: EventQueue, thought: string): never {
+  queue.push({ type: 'thought', text: thought });
+  queue.push({ type: 'awaiting_user', missing: 'service', question: "You don't have any bookings yet — would you like to make one?" });
+  interrupt('Missing bookings');
+  throw new Error('unreachable'); // interrupt() throws; satisfies the `never` contract
+}
+
+/**
+ * Shared post-tool check for the booking flows: if the last resolveBookingTarget
+ * call could not pin down a single booking, ask the user to clarify and pause.
+ */
+function interruptIfAmbiguous(state: typeof AgentState.State, response: AIMessage, queue: EventQueue): void {
+  const lastTool = [...state.messages].reverse().find(m => m.getType() === 'tool') as ToolMessage | undefined;
+  if (lastTool && lastTool.name === 'resolveBookingTarget') {
+    const parsed = typeof lastTool.content === 'string' ? JSON.parse(lastTool.content) : lastTool.content;
+    if (!parsed.bookingId) {
+      queue.push({
+        type: 'awaiting_user',
+        missing: 'service',
+        question: response.content && typeof response.content === 'string'
+          ? response.content
+          : 'Which booking did you mean?',
+      });
+      interrupt('Ambiguous target');
+    }
+  }
+}
+
 async function classifyIntent(state: typeof AgentState.State, config: any) {
   const queue = config.configurable?.eventQueue as EventQueue;
   const bookings = config.configurable?.bookings as Booking[] || [];
@@ -157,10 +190,7 @@ async function modifyAgent(state: typeof AgentState.State, config: any) {
   const bookings = config.configurable?.bookings as Booking[] || [];
   
   if (bookings.length === 0) {
-    queue.push({ type: 'thought', text: "User asked to modify a booking but I don't see any in their history." });
-    queue.push({ type: 'awaiting_user', missing: 'service', question: "You don't have any bookings yet — would you like to make one?" });
-    interrupt("Missing bookings");
-    return {};
+    interruptNoBookings(queue, "User asked to modify a booking but I don't see any in their history.");
   }
 
   const sysMsg = new SystemMessage(`You are a helpful AI orchestrator modifying an existing booking.
@@ -175,20 +205,7 @@ Before each tool call, briefly state in 1 sentence what you're about to do and w
     queue.push({ type: 'thought', text: response.content.trim() });
   }
 
-  const lastTool = [...state.messages].reverse().find(m => m.getType() === 'tool') as ToolMessage | undefined;
-  if (lastTool && lastTool.name === 'resolveBookingTarget') {
-    const parsed = typeof lastTool.content === 'string' ? JSON.parse(lastTool.content) : lastTool.content;
-    if (!parsed.bookingId) {
-      queue.push({
-        type: 'awaiting_user',
-        missing: 'service',
-        question: response.content && typeof response.content === 'string'
-          ? response.content
-          : 'Which booking did you mean?',
-      });
-      interrupt('Ambiguous target');
-    }
-  }
+  interruptIfAmbiguous(state, response, queue);
 
   return { messages: [response] };
 }
@@ -198,10 +215,7 @@ async function cancelAgent(state: typeof AgentState.State, config: any) {
   const bookings = config.configurable?.bookings as Booking[] || [];
   
   if (bookings.length === 0) {
-    queue.push({ type: 'thought', text: "User asked to cancel a booking but I don't see any in their history." });
-    queue.push({ type: 'awaiting_user', missing: 'service', question: "You don't have any bookings yet — would you like to make one?" });
-    interrupt("Missing bookings");
-    return {};
+    interruptNoBookings(queue, "User asked to cancel a booking but I don't see any in their history.");
   }
 
   const sysMsg = new SystemMessage(`You are a helpful AI orchestrator canceling an existing booking.
@@ -216,21 +230,8 @@ Before each tool call, briefly state in 1 sentence what you're about to do and w
     queue.push({ type: 'thought', text: response.content.trim() });
   }
 
-  const lastTool = [...state.messages].reverse().find(m => m.getType() === 'tool') as ToolMessage | undefined;
-  if (lastTool && lastTool.name === 'resolveBookingTarget') {
-    const parsed = typeof lastTool.content === 'string' ? JSON.parse(lastTool.content) : lastTool.content;
-    if (!parsed.bookingId) {
-      queue.push({
-        type: 'awaiting_user',
-        missing: 'service',
-        question: response.content && typeof response.content === 'string'
-          ? response.content
-          : 'Which booking did you mean?',
-      });
-      interrupt('Ambiguous target');
-    }
-  }
-  
+  interruptIfAmbiguous(state, response, queue);
+
   return { messages: [response] };
 }
 
@@ -239,10 +240,7 @@ async function queryAgent(state: typeof AgentState.State, config: any) {
   const bookings = config.configurable?.bookings as Booking[] || [];
   
   if (bookings.length === 0) {
-    queue.push({ type: 'thought', text: "User asked about a booking but I don't see any in their history." });
-    queue.push({ type: 'awaiting_user', missing: 'service', question: "You don't have any bookings yet — would you like to make one?" });
-    interrupt("Missing bookings");
-    return {};
+    interruptNoBookings(queue, "User asked about a booking but I don't see any in their history.");
   }
 
   const sysMsg = new SystemMessage(`You are a helpful AI orchestrator answering questions about an existing booking.
@@ -257,21 +255,8 @@ Before each tool call, briefly state in 1 sentence what you're about to do and w
     queue.push({ type: 'thought', text: response.content.trim() });
   }
 
-  const lastTool = [...state.messages].reverse().find(m => m.getType() === 'tool') as ToolMessage | undefined;
-  if (lastTool && lastTool.name === 'resolveBookingTarget') {
-    const parsed = typeof lastTool.content === 'string' ? JSON.parse(lastTool.content) : lastTool.content;
-    if (!parsed.bookingId) {
-      queue.push({
-        type: 'awaiting_user',
-        missing: 'service',
-        question: response.content && typeof response.content === 'string'
-          ? response.content
-          : 'Which booking did you mean?',
-      });
-      interrupt('Ambiguous target');
-    }
-  }
-  
+  interruptIfAmbiguous(state, response, queue);
+
   return { messages: [response] };
 }
 
