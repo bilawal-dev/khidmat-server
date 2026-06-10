@@ -25,19 +25,24 @@ src/
 │   ├── runAgent.ts         AsyncGenerator bridging graph events → SSE
 │   ├── sessions.ts         in-memory thread state with 1h idle eviction
 │   └── tools.ts            9 tools across new-booking / modify / cancel / query
+├── config/
+│   ├── constants.ts        named tuning knobs (earth radius, reminder lead, TTLs)
+│   └── env.ts              validated environment config (fails fast on boot)
 ├── data/
 │   ├── providers.ts        15-entry mock provider catalog (Islamabad)
 │   └── sectors.ts          sector → lat/lng for distance ranking
 ├── lib/
-│   ├── gemini.ts           Gemini client singleton (exits on missing key)
+│   ├── gemini.ts           Gemini client singleton
+│   ├── logger.ts           timestamped, levelled [server] logger
 │   ├── responseHandler.ts  standard JSON response helpers
-│   └── sse.ts              SSE headers + writeEvent
+│   ├── sse.ts              SSE headers + writeEvent
+│   └── time.ts             slot/day parsing helpers (pure, testable)
 ├── routes/
 │   └── chat.ts             POST /chat
 ├── schemas/
 │   ├── booking.ts          Booking shape (lockstep with mobile)
 │   └── chat.ts             /chat request shape
-└── index.ts                Express bootstrap
+└── index.ts                Express bootstrap + graceful shutdown
 ```
 
 ## Local development
@@ -68,14 +73,16 @@ Server starts on `http://localhost:5000` by default.
 |-----|----------|---------|---------|
 | `PORT` | yes | — | HTTP port. Server exits if missing or invalid. |
 | `TZ` | recommended | host default | Schedule math uses local time; set to `Asia/Karachi` for correct Pakistan timestamps. |
-| `GEMINI_API_KEY` | yes | — | Google AI Studio key. Server exits on import if missing. |
-| `GEMINI_MODEL_NAME` | yes | — | e.g. `gemini-2.0-flash`. Server exits on import if missing. |
+| `GEMINI_API_KEY` | yes | — | Google AI Studio key. |
+| `GEMINI_MODEL_NAME` | yes | — | e.g. `gemini-2.0-flash`. |
+
+All required vars are validated once on boot in [src/config/env.ts](src/config/env.ts); the server fails fast with a clear message if any is missing or invalid.
 
 ## API
 
 | Method | Path | Body | Response |
 |--------|------|------|----------|
-| GET | `/health` | — | `{ success, data: { status: 'ok' } }` |
+| GET | `/health` | — | `{ success: true, message: 'Health Check Passed', data: null }` |
 | POST | `/chat` | see below | SSE stream of `AgentEvent` |
 
 ### `POST /chat` request body
