@@ -18,6 +18,11 @@ app.get('/health', (_req: Request, res: Response) => {
 
 app.use('/chat', chatRouter);
 
+// Unmatched routes get a consistent JSON 404 instead of Express's default HTML.
+app.use((req: Request, res: Response) => {
+  return handleError(res, 404, `Route not found: ${req.method} ${req.originalUrl}`);
+});
+
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   logger.error('Unhandled error', err);
   return handleError(res, 500, 'Internal Server Error');
