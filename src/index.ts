@@ -13,7 +13,10 @@ app.use(express.json({ limit: '1mb' }));
 app.use(requestLogger);
 
 app.get('/health', (_req: Request, res: Response) => {
-  return handleSuccess(res, 200, "Health Check Passed");
+  return handleSuccess(res, 200, 'Health Check Passed', {
+    status: 'ok',
+    uptimeSeconds: Math.floor(process.uptime()),
+  });
 });
 
 app.use('/chat', chatRouter);

@@ -82,7 +82,7 @@ All required vars are validated once on boot in [src/config/env.ts](src/config/e
 
 | Method | Path | Body | Response |
 |--------|------|------|----------|
-| GET | `/health` | — | `{ success: true, message: 'Health Check Passed', data: null }` |
+| GET | `/health` | — | `{ success: true, message: 'Health Check Passed', data: { status: 'ok', uptimeSeconds } }` |
 | POST | `/chat` | see below | SSE stream of `AgentEvent` |
 
 ### `POST /chat` request body
