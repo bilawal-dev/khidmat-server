@@ -3,12 +3,14 @@ import express, { Request, Response, NextFunction } from 'express';
 import { handleSuccess, handleError } from './lib/responseHandler';
 import { chatRouter } from './routes/chat';
 import { logger } from './lib/logger';
+import { requestLogger } from './lib/requestLogger';
 import cors from 'cors';
 
 const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+app.use(requestLogger);
 
 app.get('/health', (_req: Request, res: Response) => {
   return handleSuccess(res, 200, "Health Check Passed");
