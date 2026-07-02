@@ -185,80 +185,66 @@ Do not ask the user for confirmation before booking. Just book it.`);
   return { messages: [response] };
 }
 
-async function modifyAgent(state: typeof AgentState.State, config: any) {
-  const queue = config.configurable?.eventQueue as EventQueue;
-  const bookings = config.configurable?.bookings as Booking[] || [];
-  
-  if (bookings.length === 0) {
-    interruptNoBookings(queue, "User asked to modify a booking but I don't see any in their history.");
-  }
+/**
+ * The modify / cancel / query flows are structurally identical: guard on empty
+ * history, build a system prompt over the bookings, invoke a flow-specific model,
+ * surface any narration as a thought, then pause if the target is ambiguous.
+ * They differ only in the empty-history note, the model, and the task instructions.
+ */
+type BookingFlowConfig = {
+  emptyHistoryThought: string;
+  model: ReturnType<typeof gemini.bindTools>;
+  role: string;
+  taskInstructions: string;
+};
 
-  const sysMsg = new SystemMessage(`You are a helpful AI orchestrator modifying an existing booking.
+function makeBookingFlowAgent(flow: BookingFlowConfig) {
+  return async function bookingFlowAgent(state: typeof AgentState.State, config: any) {
+    const queue = config.configurable?.eventQueue as EventQueue;
+    const bookings = config.configurable?.bookings as Booking[] || [];
+
+    if (bookings.length === 0) {
+      interruptNoBookings(queue, flow.emptyHistoryThought);
+    }
+
+    const sysMsg = new SystemMessage(`You are a helpful AI orchestrator ${flow.role}.
 The user's active bookings:
 ${bookingsSummary(bookings)}
 
-Use resolveBookingTarget with the user's phrasing to pick the right one. Then determine what the user wants to change (time, slot, day). If they're rescheduling, compute the new scheduledTimestamp. Call proposeBookingChange with the changes + a 1-sentence reason.
+${flow.taskInstructions}
 Before each tool call, briefly state in 1 sentence what you're about to do and why.`);
 
-  const response = await modifyModel.invoke([sysMsg, ...state.messages]);
-  if (response.content && typeof response.content === 'string' && response.content.trim()) {
-    queue.push({ type: 'thought', text: response.content.trim() });
-  }
+    const response = await flow.model.invoke([sysMsg, ...state.messages]);
+    if (response.content && typeof response.content === 'string' && response.content.trim()) {
+      queue.push({ type: 'thought', text: response.content.trim() });
+    }
 
-  interruptIfAmbiguous(state, response, queue);
+    interruptIfAmbiguous(state, response, queue);
 
-  return { messages: [response] };
+    return { messages: [response] };
+  };
 }
 
-async function cancelAgent(state: typeof AgentState.State, config: any) {
-  const queue = config.configurable?.eventQueue as EventQueue;
-  const bookings = config.configurable?.bookings as Booking[] || [];
-  
-  if (bookings.length === 0) {
-    interruptNoBookings(queue, "User asked to cancel a booking but I don't see any in their history.");
-  }
+const modifyAgent = makeBookingFlowAgent({
+  emptyHistoryThought: "User asked to modify a booking but I don't see any in their history.",
+  model: modifyModel,
+  role: 'modifying an existing booking',
+  taskInstructions: "Use resolveBookingTarget with the user's phrasing to pick the right one. Then determine what the user wants to change (time, slot, day). If they're rescheduling, compute the new scheduledTimestamp. Call proposeBookingChange with the changes + a 1-sentence reason.",
+});
 
-  const sysMsg = new SystemMessage(`You are a helpful AI orchestrator canceling an existing booking.
-The user's active bookings:
-${bookingsSummary(bookings)}
+const cancelAgent = makeBookingFlowAgent({
+  emptyHistoryThought: "User asked to cancel a booking but I don't see any in their history.",
+  model: cancelModel,
+  role: 'canceling an existing booking',
+  taskInstructions: "Use resolveBookingTarget with the user's phrasing to pick the right one. Confirm intent via a thought (no awaiting_user — the user already said cancel). Call proposeBookingCancellation with a 1-sentence reason.",
+});
 
-Use resolveBookingTarget with the user's phrasing to pick the right one. Confirm intent via a thought (no awaiting_user — the user already said cancel). Call proposeBookingCancellation with a 1-sentence reason.
-Before each tool call, briefly state in 1 sentence what you're about to do and why.`);
-
-  const response = await cancelModel.invoke([sysMsg, ...state.messages]);
-  if (response.content && typeof response.content === 'string' && response.content.trim()) {
-    queue.push({ type: 'thought', text: response.content.trim() });
-  }
-
-  interruptIfAmbiguous(state, response, queue);
-
-  return { messages: [response] };
-}
-
-async function queryAgent(state: typeof AgentState.State, config: any) {
-  const queue = config.configurable?.eventQueue as EventQueue;
-  const bookings = config.configurable?.bookings as Booking[] || [];
-  
-  if (bookings.length === 0) {
-    interruptNoBookings(queue, "User asked about a booking but I don't see any in their history.");
-  }
-
-  const sysMsg = new SystemMessage(`You are a helpful AI orchestrator answering questions about an existing booking.
-The user's active bookings:
-${bookingsSummary(bookings)}
-
-Use resolveBookingTarget with the user's phrasing to pick the right one. Generate a 2-3 sentence summary answering the user's question using the booking data. Call answerBookingQuery with the summary.
-Before each tool call, briefly state in 1 sentence what you're about to do and why.`);
-
-  const response = await queryModel.invoke([sysMsg, ...state.messages]);
-  if (response.content && typeof response.content === 'string' && response.content.trim()) {
-    queue.push({ type: 'thought', text: response.content.trim() });
-  }
-
-  interruptIfAmbiguous(state, response, queue);
-
-  return { messages: [response] };
-}
+const queryAgent = makeBookingFlowAgent({
+  emptyHistoryThought: "User asked about a booking but I don't see any in their history.",
+  model: queryModel,
+  role: 'answering questions about an existing booking',
+  taskInstructions: "Use resolveBookingTarget with the user's phrasing to pick the right one. Generate a 2-3 sentence summary answering the user's question using the booking data. Call answerBookingQuery with the summary.",
+});
 
 function routeAfterClassify(state: typeof AgentState.State) {
   const flow = state.flow || 'new_booking';
