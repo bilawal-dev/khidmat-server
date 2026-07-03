@@ -56,3 +56,11 @@ function shutdown(signal: string) {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
+
+// Last-resort visibility: never let a stray rejection or throw die silently.
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled promise rejection', reason);
+});
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception', err);
+});
