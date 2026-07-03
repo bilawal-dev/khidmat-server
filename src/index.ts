@@ -12,6 +12,13 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(requestLogger);
 
+app.get('/', (_req: Request, res: Response) => {
+  return handleSuccess(res, 200, 'Khidmat agent server', {
+    service: 'khidmat-server',
+    endpoints: ['GET /health', 'POST /chat'],
+  });
+});
+
 app.get('/health', (_req: Request, res: Response) => {
   return handleSuccess(res, 200, 'Health Check Passed', {
     status: 'ok',
