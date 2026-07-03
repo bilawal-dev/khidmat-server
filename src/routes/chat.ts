@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { ChatRequestSchema } from '../schemas/chat';
-import { initSSE, writeEvent } from '../lib/sse';
+import { initSSE, writeEvent, writeError } from '../lib/sse';
 import { runAgent } from '../agent/runAgent';
 import { handleError } from '../lib/responseHandler';
 
@@ -25,7 +25,7 @@ chatRouter.post('/', async (req: Request, res: Response) => {
       writeEvent(res, event);
     }
   } catch (err) {
-    res.write(`data: ${JSON.stringify({ type: 'error', message: String(err) })}\n\n`);
+    writeError(res, String(err));
   } finally {
     res.end();
   }
