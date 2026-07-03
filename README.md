@@ -75,6 +75,7 @@ Server starts on `http://localhost:5000` by default.
 | `TZ` | recommended | host default | Schedule math uses local time; set to `Asia/Karachi` for correct Pakistan timestamps. |
 | `GEMINI_API_KEY` | yes | — | Google AI Studio key. |
 | `GEMINI_MODEL_NAME` | yes | — | e.g. `gemini-2.0-flash`. |
+| `CORS_ORIGINS` | no | all origins | Comma-separated CORS allowlist. Unset = permissive. |
 
 All required vars are validated once on boot in [src/config/env.ts](src/config/env.ts); the server fails fast with a clear message if any is missing or invalid.
 

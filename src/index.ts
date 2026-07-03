@@ -8,7 +8,9 @@ import cors from 'cors';
 
 const app = express();
 
-app.use(cors());
+// Restrict CORS to the configured origins when CORS_ORIGINS is set; otherwise
+// stay permissive (default) since the mobile client sends no browser Origin.
+app.use(cors(env.CORS_ORIGINS ? { origin: env.CORS_ORIGINS } : undefined));
 app.use(express.json({ limit: '1mb' }));
 app.use(requestLogger);
 

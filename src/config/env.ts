@@ -28,8 +28,20 @@ function requiredPort(name: string): number {
   return port;
 }
 
+/**
+ * Comma-separated allowlist of origins for CORS. Optional — when unset, all
+ * origins are permitted (the mobile client sends no browser Origin anyway).
+ */
+function optionalList(name: string): string[] | undefined {
+  const raw = process.env[name];
+  if (!raw) return undefined;
+  const list = raw.split(',').map(s => s.trim()).filter(Boolean);
+  return list.length > 0 ? list : undefined;
+}
+
 export const env = {
   PORT: requiredPort('PORT'),
   GEMINI_API_KEY: required('GEMINI_API_KEY'),
   GEMINI_MODEL_NAME: required('GEMINI_MODEL_NAME'),
+  CORS_ORIGINS: optionalList('CORS_ORIGINS'),
 };
