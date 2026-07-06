@@ -229,13 +229,24 @@ const queryAgent = makeBookingFlowAgent({
   taskInstructions: "Use resolveBookingTarget with the user's phrasing to pick the right one. Generate a 2-3 sentence summary answering the user's question using the booking data. Call answerBookingQuery with the summary.",
 });
 
+// Flow → next node. new_booking differs by entry point: from the classifier it
+// heads into intent_extraction, but after a tool call it returns to the agent.
+const CLASSIFY_ROUTES: Record<string, string> = {
+  new_booking: 'intent_extraction',
+  modify_booking: 'modifyAgent',
+  cancel_booking: 'cancelAgent',
+  query_booking: 'queryAgent',
+};
+
+const TOOLS_ROUTES: Record<string, string> = {
+  new_booking: 'newBookingAgent',
+  modify_booking: 'modifyAgent',
+  cancel_booking: 'cancelAgent',
+  query_booking: 'queryAgent',
+};
+
 function routeAfterClassify(state: typeof AgentState.State) {
-  const flow = state.flow || 'new_booking';
-  if (flow === 'new_booking') return 'intent_extraction';
-  if (flow === 'modify_booking') return 'modifyAgent';
-  if (flow === 'cancel_booking') return 'cancelAgent';
-  if (flow === 'query_booking') return 'queryAgent';
-  return 'intent_extraction';
+  return CLASSIFY_ROUTES[state.flow || 'new_booking'] ?? 'intent_extraction';
 }
 
 function routeAfterGate(state: typeof AgentState.State) {
@@ -255,13 +266,8 @@ function routeAfterAgent(state: typeof AgentState.State) {
 }
 
 function routeAfterTools(state: typeof AgentState.State) {
-  // Return to the correct agent based on flow
-  const flow = state.flow || 'new_booking';
-  if (flow === 'new_booking') return 'newBookingAgent';
-  if (flow === 'modify_booking') return 'modifyAgent';
-  if (flow === 'cancel_booking') return 'cancelAgent';
-  if (flow === 'query_booking') return 'queryAgent';
-  return 'newBookingAgent';
+  // Return to the correct agent based on flow.
+  return TOOLS_ROUTES[state.flow || 'new_booking'] ?? 'newBookingAgent';
 }
 
 const workflow = new StateGraph(AgentState)
