@@ -46,12 +46,21 @@ const server = app.listen(env.PORT, () => {
 
 // Drain in-flight requests on a shutdown signal so the process exits cleanly
 // (e.g. under a container orchestrator) instead of dropping live connections.
+const SHUTDOWN_TIMEOUT_MS = 10_000;
+
 function shutdown(signal: string) {
   logger.info(`Received ${signal}, shutting down gracefully...`);
   server.close(() => {
     logger.info('HTTP server closed.');
     process.exit(0);
   });
+
+  // Don't hang forever if a long-lived connection (e.g. an open SSE stream)
+  // refuses to drain — force the exit after a grace period.
+  setTimeout(() => {
+    logger.error('Shutdown timed out; forcing exit.');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS).unref();
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
