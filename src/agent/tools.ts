@@ -9,6 +9,7 @@ import { Booking } from '../schemas/booking';
 import { REMINDER_LEAD_MS } from '../config/constants';
 import { slotMatchesPreference, parseSlotTo24h, dayLabelToOffset } from '../lib/time';
 import { haversineKm } from '../lib/geo';
+import { disambiguationPrompt } from './prompts';
 
 export const searchProviders = tool(
   async ({ category, sector }, config) => {
@@ -159,14 +160,8 @@ export const resolveBookingTarget = tool(
       bookingId: z.string().describe("The ID of the matching booking, or empty string if ambiguous/no match"),
       summary: z.string().describe("A brief summary of the matched booking, or explanation of why it's ambiguous")
     }));
-    
-    const prompt = `You are a disambiguation assistant. Given the user's phrasing and a list of bookings, identify which booking they are referring to.
-User Phrase: "${userPhrase}"
-Bookings: ${JSON.stringify(bookings, null, 2)}
 
-If exactly one booking matches, return its ID. If multiple match or none match, return an empty string for bookingId.`;
-
-    return await structuredModel.invoke(prompt);
+    return await structuredModel.invoke(disambiguationPrompt(userPhrase, bookings));
   },
   {
     name: 'resolveBookingTarget',

@@ -38,3 +38,12 @@ ${bookingsSummary}
 ${taskInstructions}
 Before each tool call, briefly state in 1 sentence what you're about to do and why.`;
 }
+
+/** Prompt for the resolveBookingTarget tool: pick which booking the user means. */
+export function disambiguationPrompt(userPhrase: string, bookings: unknown): string {
+  return `You are a disambiguation assistant. Given the user's phrasing and a list of bookings, identify which booking they are referring to.
+User Phrase: "${userPhrase}"
+Bookings: ${JSON.stringify(bookings, null, 2)}
+
+If exactly one booking matches, return its ID. If multiple match or none match, return an empty string for bookingId.`;
+}
