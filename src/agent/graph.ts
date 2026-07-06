@@ -6,10 +6,13 @@ import { EventQueue } from './eventQueue';
 import { SECTOR_COORDS } from '../data/sectors';
 import { SERVICE_CATEGORIES } from '../data/providers';
 import { Booking } from '../schemas/booking';
-import { 
+import {
   searchProviders, rankByDistance, checkAvailability, confirmBooking, scheduleReminder,
   resolveBookingTarget, proposeBookingChange, proposeBookingCancellation, answerBookingQuery
 } from './tools';
+import {
+  classifierPrompt, intentExtractionPrompt, NEW_BOOKING_SYSTEM, bookingFlowSystem
+} from './prompts';
 import { ToolNode } from '@langchain/langgraph/prebuilt';
 
 export const AgentState = Annotation.Root({
@@ -94,12 +97,7 @@ async function classifyIntent(state: typeof AgentState.State, config: any) {
   const lastMsg = state.messages[state.messages.length - 1];
   
   const structuredModel = gemini.withStructuredOutput(IntentClassifierSchema);
-  const prompt = `You are a router. Classify the user's intent into one of: 'new_booking', 'modify_booking', 'cancel_booking', 'query_booking'.
-User message: "${lastMsg.content}"
-User's existing bookings: ${JSON.stringify(bookings, null, 2)}
-Return your reasoning in a brief sentence.`;
-
-  const result = await structuredModel.invoke(prompt);
+  const result = await structuredModel.invoke(classifierPrompt(lastMsg.content, bookings));
   queue.push({ type: 'thought', text: `Classified intent as ${result.intent}: ${result.reasoning}` });
   
   return { flow: result.intent };
@@ -115,16 +113,7 @@ async function intentExtraction(state: typeof AgentState.State, config: any) {
     .join("\n");
   
   const structuredModel = gemini.withStructuredOutput(IntentSchema);
-  const prompt = `You are an intent extraction agent for an AI service orchestrator in Islamabad.
-Extract the following fields from the conversation history. Only extract if explicitly stated or inferred safely.
-- service: Must be one of [${SERVICE_CATEGORIES.join(', ')}].
-- location: Extract any sector mentioned (e.g. "G-13", "F-10").
-- time: Extract any time reference (e.g. "tomorrow morning").
-
-Conversation history:
-${textMessages}`;
-
-  const extracted = await structuredModel.invoke(prompt);
+  const extracted = await structuredModel.invoke(intentExtractionPrompt(textMessages, SERVICE_CATEGORIES));
 
   let usedDefaultLocation = false;
   if (!extracted.location && defaultLocation) {
@@ -171,11 +160,8 @@ async function gate(state: typeof AgentState.State, config: any) {
 
 async function newBookingAgent(state: typeof AgentState.State, config: any) {
   const queue = config.configurable?.eventQueue as EventQueue;
-  const sysMsg = new SystemMessage(`You are a helpful AI orchestrator finding and booking services.
-Before each tool call, briefly state in 1 sentence what you're about to do and why.
-Before calling confirmBooking, look at the ranked list you got from rankByDistance and write a 2-3 sentence reasoning that compares the top pick against the alternatives based on distance and rating. Pass that string as the reasoning arg.
-Do not ask the user for confirmation before booking. Just book it.`);
-  
+  const sysMsg = new SystemMessage(NEW_BOOKING_SYSTEM);
+
   const response = await newBookingModel.invoke([sysMsg, ...state.messages]);
   
   if (response.content && typeof response.content === 'string' && response.content.trim()) {
@@ -207,12 +193,9 @@ function makeBookingFlowAgent(flow: BookingFlowConfig) {
       interruptNoBookings(queue, flow.emptyHistoryThought);
     }
 
-    const sysMsg = new SystemMessage(`You are a helpful AI orchestrator ${flow.role}.
-The user's active bookings:
-${bookingsSummary(bookings)}
-
-${flow.taskInstructions}
-Before each tool call, briefly state in 1 sentence what you're about to do and why.`);
+    const sysMsg = new SystemMessage(
+      bookingFlowSystem(flow.role, bookingsSummary(bookings), flow.taskInstructions),
+    );
 
     const response = await flow.model.invoke([sysMsg, ...state.messages]);
     if (response.content && typeof response.content === 'string' && response.content.trim()) {
