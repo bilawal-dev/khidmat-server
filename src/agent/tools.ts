@@ -6,18 +6,9 @@ import { EventQueue } from './eventQueue';
 import * as crypto from 'crypto';
 import { gemini } from '../lib/gemini';
 import { Booking } from '../schemas/booking';
-import { EARTH_RADIUS_KM, REMINDER_LEAD_MS } from '../config/constants';
+import { REMINDER_LEAD_MS } from '../config/constants';
 import { slotMatchesPreference, parseSlotTo24h, dayLabelToOffset } from '../lib/time';
-
-function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
-  const R = EARTH_RADIUS_KM;
-  const dLat = (b.lat - a.lat) * Math.PI / 180;
-  const dLng = (b.lng - a.lng) * Math.PI / 180;
-  const h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * 
-            Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-}
+import { haversineKm } from '../lib/geo';
 
 export const searchProviders = tool(
   async ({ category, sector }, config) => {
