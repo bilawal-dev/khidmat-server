@@ -1,5 +1,13 @@
 import { AgentEvent } from './events';
 
+/**
+ * Single-producer/single-consumer async queue bridging the LangGraph run (which
+ * pushes events synchronously as tools fire) to the SSE consumer (which awaits
+ * them via `for await`). Buffers events when no consumer is waiting and resolves
+ * a parked consumer immediately when one is. There is no bound on the buffer —
+ * an agent run emits a small, finite number of events, so backpressure isn't
+ * needed. Call `end()` exactly once to terminate the async iterator.
+ */
 export class EventQueue {
   private events: AgentEvent[] = [];
   private resolvers: Array<(e: IteratorResult<AgentEvent>) => void> = [];
