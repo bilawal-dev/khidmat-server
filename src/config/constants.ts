@@ -3,6 +3,12 @@
 /** Mean radius of the Earth in kilometres, used by the haversine distance calc. */
 export const EARTH_RADIUS_KM = 6371;
 
+/**
+ * Sampling temperature for the agent model. Kept at 0 for deterministic tool
+ * routing and structured-output extraction — the flow depends on stable choices.
+ */
+export const AGENT_TEMPERATURE = 0;
+
 /** How far ahead of a booking a reminder fires (1 hour, in milliseconds). */
 export const REMINDER_LEAD_MS = 60 * 60 * 1000;
 
