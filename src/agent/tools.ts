@@ -6,7 +6,7 @@ import { EventQueue } from './eventQueue';
 import * as crypto from 'crypto';
 import { gemini } from '../lib/gemini';
 import { Booking } from '../schemas/booking';
-import { REMINDER_LEAD_MS } from '../config/constants';
+import { REMINDER_LEAD_MS, REMINDER_LEAD_LABEL } from '../config/constants';
 import { slotMatchesPreference, parseSlotTo24h, dayLabelToOffset } from '../lib/time';
 import { haversineKm } from '../lib/geo';
 import { disambiguationPrompt } from './prompts';
@@ -131,7 +131,7 @@ export const scheduleReminder = tool(
   async ({ bookingId, scheduledTimestamp }, config) => {
     const queue = config.configurable?.eventQueue as EventQueue;
     
-    const at = '1 hour before';
+    const at = REMINDER_LEAD_LABEL;
     const atTimestamp = scheduledTimestamp - REMINDER_LEAD_MS;
     
     queue.push({

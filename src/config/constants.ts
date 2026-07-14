@@ -6,6 +6,16 @@ export const EARTH_RADIUS_KM = 6371;
 /** How far ahead of a booking a reminder fires (1 hour, in milliseconds). */
 export const REMINDER_LEAD_MS = 60 * 60 * 1000;
 
+/**
+ * Human-readable reminder lead ("1 hour before"), derived from REMINDER_LEAD_MS
+ * so the label and the timestamp offset can never disagree.
+ */
+export const REMINDER_LEAD_LABEL = (() => {
+  const hours = REMINDER_LEAD_MS / (60 * 60 * 1000);
+  const unit = hours === 1 ? 'hour' : 'hours';
+  return `${hours} ${unit} before`;
+})();
+
 /** Idle lifetime of an in-memory session before it is evicted (1 hour). */
 export const SESSION_TTL_MS = 60 * 60 * 1000;
 
