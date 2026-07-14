@@ -1,4 +1,4 @@
-/** Sector center coordinates for Islamabad. Mirrors `apps/mobile/lib/mock/providers.ts`. */
+/** Sector center coordinates for Islamabad. Mirrors `mobile/lib/mock/providers.ts`. */
 export const SECTOR_COORDS: Record<string, { lat: number; lng: number }> = {
   'F-6': { lat: 33.7295, lng: 73.0775 },
   'F-7': { lat: 33.717, lng: 73.0707 },
