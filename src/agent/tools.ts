@@ -1,7 +1,7 @@
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 import { providers, Provider, SERVICE_CATEGORIES } from '../data/providers';
-import { SECTOR_COORDS } from '../data/sectors';
+import { sectorCoords } from '../data/sectors';
 import { EventQueue } from './eventQueue';
 import * as crypto from 'crypto';
 import { gemini } from '../lib/gemini';
@@ -30,7 +30,7 @@ export const searchProviders = tool(
 export const rankByDistance = tool(
   async ({ providers: inputProviders, fromSector }, config) => {
     const queue = config.configurable?.eventQueue as EventQueue;
-    const userCoords = SECTOR_COORDS[fromSector.toUpperCase()];
+    const userCoords = sectorCoords(fromSector);
     if (!userCoords) return { error: 'unknown_sector', sector: fromSector };
 
     const ranked = (inputProviders as Provider[]).map(provider => {

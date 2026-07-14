@@ -17,3 +17,22 @@ export const SECTOR_COORDS: Record<string, { lat: number; lng: number }> = {
 };
 
 export const SECTORS = Object.keys(SECTOR_COORDS);
+
+/**
+ * Resolve a sector string to its center coordinates. Tries an exact (case-
+ * insensitive) match first, then falls back to any sector sharing the same base
+ * (e.g. "F-10/3" → "F-10/1" when the exact sub-sector isn't in the table).
+ * Returns undefined only when nothing shares the base, so callers can still
+ * distinguish a genuinely unknown sector.
+ */
+export function sectorCoords(sector: string): { lat: number; lng: number } | undefined {
+  const key = sector.toUpperCase();
+  if (SECTOR_COORDS[key]) return SECTOR_COORDS[key];
+
+  const base = key.split('/')[0];
+  for (const [name, coords] of Object.entries(SECTOR_COORDS)) {
+    if (name.toUpperCase().split('/')[0] === base) return coords;
+  }
+
+  return undefined;
+}
