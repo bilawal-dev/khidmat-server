@@ -3,6 +3,7 @@ import { ChatRequestSchema } from '../schemas/chat';
 import { initSSE, writeEvent, writeError } from '../lib/sse';
 import { runAgent } from '../agent/runAgent';
 import { handleError } from '../lib/responseHandler';
+import { logger } from '../lib/logger';
 
 export const chatRouter = Router();
 
@@ -25,7 +26,10 @@ chatRouter.post('/', async (req: Request, res: Response) => {
       writeEvent(res, event);
     }
   } catch (err) {
-    writeError(res, String(err));
+    // Log the full error server-side; send the client a generic frame so we
+    // don't leak internal error details (stack traces, provider messages).
+    logger.error('Chat stream failed', err);
+    writeError(res, 'Something went wrong while processing your request.');
   } finally {
     res.end();
   }
