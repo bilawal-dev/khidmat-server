@@ -1,7 +1,8 @@
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
-import { providers, Provider, SERVICE_CATEGORIES } from '../data/providers';
+import { providers, Provider } from '../data/providers';
 import { sectorCoords } from '../data/sectors';
+import { ServiceCategoryEnum } from '../schemas/common';
 import { EventQueue } from './eventQueue';
 import * as crypto from 'crypto';
 import { gemini } from '../lib/gemini';
@@ -21,7 +22,7 @@ export const searchProviders = tool(
     name: 'searchProviders',
     description: 'Find providers in the dataset matching the service category.',
     schema: z.object({
-      category: z.enum(SERVICE_CATEGORIES as [string, ...string[]]),
+      category: ServiceCategoryEnum,
       sector: z.string()
     })
   }

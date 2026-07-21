@@ -6,6 +6,7 @@ import { EventQueue } from './eventQueue';
 import { SECTOR_COORDS } from '../data/sectors';
 import { SERVICE_CATEGORIES } from '../data/providers';
 import { Booking } from '../schemas/booking';
+import { ServiceCategoryEnum } from '../schemas/common';
 import {
   searchProviders, rankByDistance, checkAvailability, confirmBooking, scheduleReminder,
   resolveBookingTarget, proposeBookingChange, proposeBookingCancellation, answerBookingQuery
@@ -28,7 +29,7 @@ export const AgentState = Annotation.Root({
 });
 
 const IntentSchema = z.object({
-  service: z.enum(SERVICE_CATEGORIES as [string, ...string[]]).optional(),
+  service: ServiceCategoryEnum.optional(),
   location: z.string().optional(),
   time: z.string().optional(),
 });

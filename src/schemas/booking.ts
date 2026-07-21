@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SERVICE_CATEGORIES } from '../data/providers';
+import { ServiceCategoryEnum } from './common';
 
 /** Lifecycle states a booking can be in. Single source for the enum + type. */
 export const BOOKING_STATUSES = ['confirmed', 'reminded', 'completed', 'cancelled'] as const;
@@ -9,7 +9,7 @@ export const BookingSchema = z.object({
   id: z.string(),
   providerId: z.string(),
   providerName: z.string(),
-  category: z.enum(SERVICE_CATEGORIES as [string, ...string[]]),
+  category: ServiceCategoryEnum,
   sector: z.string(),
   scheduledFor: z.string(),
   scheduledTimestamp: z.number(),
