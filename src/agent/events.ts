@@ -2,7 +2,7 @@ import type { Provider, ServiceCategory } from '../data/providers';
 
 /**
  * Wire contract between server and mobile.
- * MUST stay in lockstep with `apps/mobile/lib/agent/types.ts`.
+ * MUST stay in lockstep with `mobile/lib/agent/types.ts`.
  *
  * The first eight events mirror the FE's existing event vocabulary (new-booking flow).
  * The last three are intents the agent emits to mutate bookings the FE already holds

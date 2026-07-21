@@ -22,7 +22,7 @@ export type Provider = {
   availableSlots: string[];
 };
 
-/** Ported verbatim from `apps/mobile/lib/mock/providers.ts` to keep FE/BE in lockstep. */
+/** Ported verbatim from `mobile/lib/mock/providers.ts` to keep FE/BE in lockstep. */
 export const providers: Provider[] = [
   // ── AC (3) ──────────────────────────────────────────
   {
