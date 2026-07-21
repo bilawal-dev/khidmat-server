@@ -140,11 +140,20 @@ async function intentExtraction(state: typeof AgentState.State, config: any) {
   return { intent: extracted };
 }
 
+/**
+ * A booking intent is actionable only once we have a service, a time, and a
+ * location we can actually map to coordinates. Shared by `gate` (which pauses
+ * for the missing field) and `routeAfterGate` (which routes on the same rule).
+ */
+function isIntentComplete(intent: any): boolean {
+  return !!(intent && intent.service && intent.location && intent.time && SECTOR_COORDS[intent.location]);
+}
+
 async function gate(state: typeof AgentState.State, config: any) {
   const queue = config.configurable?.eventQueue as EventQueue;
   const extracted = state.intent;
 
-  if (!extracted || !extracted.service || !extracted.location || !extracted.time || !SECTOR_COORDS[extracted.location]) {
+  if (!isIntentComplete(extracted)) {
     if (!extracted?.service) {
       queue.push({ type: 'awaiting_user', missing: 'service', question: 'What service do you need? (AC repair, plumber, electrician, tutor, beautician)' });
     } else if (!extracted?.location || !SECTOR_COORDS[extracted.location]) {
@@ -251,11 +260,7 @@ function routeAfterClassify(state: typeof AgentState.State) {
 }
 
 function routeAfterGate(state: typeof AgentState.State) {
-  const ext = state.intent;
-  if (!ext || !ext.service || !ext.location || !ext.time || !SECTOR_COORDS[ext.location]) {
-    return "intent_extraction";
-  }
-  return "newBookingAgent";
+  return isIntentComplete(state.intent) ? "newBookingAgent" : "intent_extraction";
 }
 
 function routeAfterAgent(state: typeof AgentState.State) {
