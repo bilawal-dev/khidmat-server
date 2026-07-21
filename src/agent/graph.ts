@@ -168,15 +168,23 @@ async function gate(state: typeof AgentState.State, config: any) {
   return {};
 }
 
+/**
+ * Surface any free-text the model returned alongside its tool calls as a
+ * `thought` event. No-op when the response carried only tool calls.
+ */
+function pushNarration(queue: EventQueue, response: AIMessage): void {
+  if (response.content && typeof response.content === 'string' && response.content.trim()) {
+    queue.push({ type: 'thought', text: response.content.trim() });
+  }
+}
+
 async function newBookingAgent(state: typeof AgentState.State, config: any) {
   const queue = config.configurable?.eventQueue as EventQueue;
   const sysMsg = new SystemMessage(NEW_BOOKING_SYSTEM);
 
   const response = await newBookingModel.invoke([sysMsg, ...state.messages]);
-  
-  if (response.content && typeof response.content === 'string' && response.content.trim()) {
-    queue.push({ type: 'thought', text: response.content.trim() });
-  }
+
+  pushNarration(queue, response);
 
   return { messages: [response] };
 }
@@ -208,9 +216,7 @@ function makeBookingFlowAgent(flow: BookingFlowConfig) {
     );
 
     const response = await flow.model.invoke([sysMsg, ...state.messages]);
-    if (response.content && typeof response.content === 'string' && response.content.trim()) {
-      queue.push({ type: 'thought', text: response.content.trim() });
-    }
+    pushNarration(queue, response);
 
     interruptIfAmbiguous(state, response, queue);
 
