@@ -5,7 +5,7 @@ import { sectorCoords } from '../data/sectors';
 import { EventQueue } from './eventQueue';
 import * as crypto from 'crypto';
 import { gemini } from '../lib/gemini';
-import { Booking } from '../schemas/booking';
+import { Booking, BOOKING_STATUSES } from '../schemas/booking';
 import { REMINDER_LEAD_MS, REMINDER_LEAD_LABEL } from '../config/constants';
 import { slotMatchesPreference, parseSlotTo24h, dayLabelToOffset } from '../lib/time';
 import { haversineKm } from '../lib/geo';
@@ -187,7 +187,7 @@ export const proposeBookingChange = tool(
         dayLabel: z.string().optional(),
         slot: z.string().optional(),
         scheduledTimestamp: z.number().optional(),
-        status: z.enum(['confirmed', 'reminded', 'completed', 'cancelled']).optional()
+        status: z.enum(BOOKING_STATUSES as unknown as [string, ...string[]]).optional()
       }).strict(),
       reason: z.string()
     })
