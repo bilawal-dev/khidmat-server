@@ -34,8 +34,13 @@ const IntentSchema = z.object({
   time: z.string().optional(),
 });
 
+/** The booking flows the classifier can route to. Drives the classifier enum,
+ *  the `Flow` type, and the route-lookup maps below. */
+export const FLOWS = ['new_booking', 'modify_booking', 'cancel_booking', 'query_booking'] as const;
+export type Flow = (typeof FLOWS)[number];
+
 const IntentClassifierSchema = z.object({
-  intent: z.enum(['new_booking', 'modify_booking', 'cancel_booking', 'query_booking']),
+  intent: z.enum(FLOWS as unknown as [string, ...string[]]),
   reasoning: z.string(),
 });
 
@@ -247,14 +252,14 @@ const queryAgent = makeBookingFlowAgent({
 
 // Flow → next node. new_booking differs by entry point: from the classifier it
 // heads into intent_extraction, but after a tool call it returns to the agent.
-const CLASSIFY_ROUTES: Record<string, string> = {
+const CLASSIFY_ROUTES: Record<Flow, string> = {
   new_booking: 'intent_extraction',
   modify_booking: 'modifyAgent',
   cancel_booking: 'cancelAgent',
   query_booking: 'queryAgent',
 };
 
-const TOOLS_ROUTES: Record<string, string> = {
+const TOOLS_ROUTES: Record<Flow, string> = {
   new_booking: 'newBookingAgent',
   modify_booking: 'modifyAgent',
   cancel_booking: 'cancelAgent',
@@ -262,7 +267,7 @@ const TOOLS_ROUTES: Record<string, string> = {
 };
 
 function routeAfterClassify(state: typeof AgentState.State) {
-  return CLASSIFY_ROUTES[state.flow || 'new_booking'] ?? 'intent_extraction';
+  return CLASSIFY_ROUTES[(state.flow || 'new_booking') as Flow] ?? 'intent_extraction';
 }
 
 function routeAfterGate(state: typeof AgentState.State) {
@@ -279,7 +284,7 @@ function routeAfterAgent(state: typeof AgentState.State) {
 
 function routeAfterTools(state: typeof AgentState.State) {
   // Return to the correct agent based on flow.
-  return TOOLS_ROUTES[state.flow || 'new_booking'] ?? 'newBookingAgent';
+  return TOOLS_ROUTES[(state.flow || 'new_booking') as Flow] ?? 'newBookingAgent';
 }
 
 const workflow = new StateGraph(AgentState)
