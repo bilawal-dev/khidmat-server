@@ -19,9 +19,11 @@ Stateless re: bookings — the mobile app is the source of truth. The server emi
 ```
 src/
 ├── agent/
+│   ├── config.ts           typed accessors for the RunnableConfig bag
 │   ├── eventQueue.ts       producer/consumer queue feeding SSE
 │   ├── events.ts           AgentEvent wire contract (mirrors mobile)
 │   ├── graph.ts            LangGraph: classify → branch agents → tools
+│   ├── prompts.ts          classifier / extraction / flow system prompts
 │   ├── runAgent.ts         AsyncGenerator bridging graph events → SSE
 │   ├── sessions.ts         in-memory thread state with 1h idle eviction
 │   └── tools.ts            9 tools across new-booking / modify / cancel / query
@@ -30,18 +32,22 @@ src/
 │   └── env.ts              validated environment config (fails fast on boot)
 ├── data/
 │   ├── providers.ts        15-entry mock provider catalog (Islamabad)
-│   └── sectors.ts          sector → lat/lng for distance ranking
+│   └── sectors.ts          sector → lat/lng + base-sector resolver
 ├── lib/
+│   ├── bookings.ts         booking-list summary for the flow prompts
 │   ├── gemini.ts           Gemini client singleton
+│   ├── geo.ts              haversine distance (pure, testable)
 │   ├── logger.ts           timestamped, levelled [server] logger
+│   ├── requestLogger.ts    per-request method/status/duration logging
 │   ├── responseHandler.ts  standard JSON response helpers
-│   ├── sse.ts              SSE headers + writeEvent
+│   ├── sse.ts              SSE headers + writeEvent / writeError
 │   └── time.ts             slot/day parsing helpers (pure, testable)
 ├── routes/
 │   └── chat.ts             POST /chat
 ├── schemas/
-│   ├── booking.ts          Booking shape (lockstep with mobile)
-│   └── chat.ts             /chat request shape
+│   ├── booking.ts          Booking shape + BOOKING_STATUSES (lockstep with mobile)
+│   ├── chat.ts             /chat request shape
+│   └── common.ts           shared Zod pieces (ServiceCategoryEnum)
 └── index.ts                Express bootstrap + graceful shutdown
 ```
 
@@ -64,6 +70,7 @@ Server starts on `http://localhost:5000` by default.
 |--------|------|
 | `npm run dev` | `tsx watch` — auto-reloads on change |
 | `npm run typecheck` | `tsc --noEmit` |
+| `npm test` | `node:test` unit suite (geo, time, sectors, bookings, constants) |
 | `npm run build` | Compile to `dist/` |
 | `npm start` | Run compiled `dist/index.js` |
 
