@@ -1,13 +1,18 @@
 import { Response } from 'express';
 import { AgentEvent } from '../agent/events';
 
+/** Serialize a payload as a single SSE `data:` frame. */
+function writeData(res: Response, payload: unknown) {
+  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
 export function writeEvent(res: Response, event: AgentEvent) {
-  res.write(`data: ${JSON.stringify(event)}\n\n`);
+  writeData(res, event);
 }
 
 /** Emit a terminal error frame on the SSE stream (not part of the AgentEvent union). */
 export function writeError(res: Response, message: string) {
-  res.write(`data: ${JSON.stringify({ type: 'error', message })}\n\n`);
+  writeData(res, { type: 'error', message });
 }
 
 export function initSSE(res: Response) {
