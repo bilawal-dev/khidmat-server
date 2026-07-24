@@ -26,6 +26,18 @@ test("slotMatchesPreference: 'any' never forces a match", () => {
   assert.equal(slotMatchesPreference('10:00 AM', 'any'), false);
 });
 
+test('slotMatchesPreference: hour boundaries around 12', () => {
+  // 12:00 AM is not morning (morning is 6-11 AM).
+  assert.equal(slotMatchesPreference('12:00 AM', 'morning'), false);
+  // Noon counts as afternoon, not morning.
+  assert.equal(slotMatchesPreference('12:00 PM', 'morning'), false);
+  assert.equal(slotMatchesPreference('12:00 PM', 'afternoon'), true);
+  // 11 PM is the top of the evening window.
+  assert.equal(slotMatchesPreference('11:00 PM', 'evening'), true);
+  // 1 PM is afternoon.
+  assert.equal(slotMatchesPreference('1:00 PM', 'afternoon'), true);
+});
+
 test('parseSlotTo24h: converts 12h to 24h', () => {
   assert.deepEqual(parseSlotTo24h('10:00 AM'), { hour: 10, minute: 0 });
   assert.deepEqual(parseSlotTo24h('12:00 PM'), { hour: 12, minute: 0 });
