@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { logger } from '../lib/logger';
+import { parseList } from '../lib/parseList';
 
 /**
  * Single source of truth for environment configuration.
@@ -33,10 +34,7 @@ function requiredPort(name: string): number {
  * origins are permitted (the mobile client sends no browser Origin anyway).
  */
 function optionalList(name: string): string[] | undefined {
-  const raw = process.env[name];
-  if (!raw) return undefined;
-  const list = raw.split(',').map(s => s.trim()).filter(Boolean);
-  return list.length > 0 ? list : undefined;
+  return parseList(process.env[name]);
 }
 
 export const env = {
