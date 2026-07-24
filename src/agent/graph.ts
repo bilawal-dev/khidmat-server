@@ -6,8 +6,8 @@ import { EventQueue } from './eventQueue';
 import { getEventQueue, getBookings, getDefaultLocation } from './config';
 import { SECTOR_COORDS } from '../data/sectors';
 import { SERVICE_CATEGORIES } from '../data/providers';
-import { Booking } from '../schemas/booking';
 import { ServiceCategoryEnum } from '../schemas/common';
+import { bookingsSummary } from '../lib/bookings';
 import {
   searchProviders, rankByDistance, checkAvailability, confirmBooking, scheduleReminder,
   resolveBookingTarget, proposeBookingChange, proposeBookingCancellation, answerBookingQuery
@@ -56,13 +56,6 @@ const newBookingModel = gemini.bindTools(newBookingTools);
 const modifyModel = gemini.bindTools(modifyTools);
 const cancelModel = gemini.bindTools(cancelTools);
 const queryModel = gemini.bindTools(queryTools);
-
-function bookingsSummary(bookings: Booking[]): string {
-  if (!bookings.length) return '(no bookings)';
-  return bookings.map((b, i) =>
-    `${i + 1}. id=${b.id} | ${b.category} with ${b.providerName} | ${b.scheduledFor} | status=${b.status}`
-  ).join('\n');
-}
 
 /**
  * Shared guard for the modify/cancel/query flows: when the user has no bookings,
