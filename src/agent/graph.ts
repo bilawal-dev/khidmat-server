@@ -3,6 +3,7 @@ import { AIMessage, SystemMessage, ToolMessage } from '@langchain/core/messages'
 import { z } from 'zod';
 import { gemini } from '../lib/gemini';
 import { EventQueue } from './eventQueue';
+import { getEventQueue, getBookings, getDefaultLocation } from './config';
 import { SECTOR_COORDS } from '../data/sectors';
 import { SERVICE_CATEGORIES } from '../data/providers';
 import { Booking } from '../schemas/booking';
@@ -97,8 +98,8 @@ function interruptIfAmbiguous(state: typeof AgentState.State, response: AIMessag
 }
 
 async function classifyIntent(state: typeof AgentState.State, config: any) {
-  const queue = config.configurable?.eventQueue as EventQueue;
-  const bookings = config.configurable?.bookings as Booking[] || [];
+  const queue = getEventQueue(config);
+  const bookings = getBookings(config);
   
   const lastMsg = state.messages[state.messages.length - 1];
   
@@ -110,8 +111,8 @@ async function classifyIntent(state: typeof AgentState.State, config: any) {
 }
 
 async function intentExtraction(state: typeof AgentState.State, config: any) {
-  const queue = config.configurable?.eventQueue as EventQueue;
-  const defaultLocation = config.configurable?.defaultLocation as string | undefined;
+  const queue = getEventQueue(config);
+  const defaultLocation = getDefaultLocation(config);
   
   const textMessages = state.messages
     .filter(m => m.getType() === 'human' || m.getType() === 'ai')
@@ -155,7 +156,7 @@ function isIntentComplete(intent: any): boolean {
 }
 
 async function gate(state: typeof AgentState.State, config: any) {
-  const queue = config.configurable?.eventQueue as EventQueue;
+  const queue = getEventQueue(config);
   const extracted = state.intent;
 
   if (!isIntentComplete(extracted)) {
@@ -184,7 +185,7 @@ function pushNarration(queue: EventQueue, response: AIMessage): void {
 }
 
 async function newBookingAgent(state: typeof AgentState.State, config: any) {
-  const queue = config.configurable?.eventQueue as EventQueue;
+  const queue = getEventQueue(config);
   const sysMsg = new SystemMessage(NEW_BOOKING_SYSTEM);
 
   const response = await newBookingModel.invoke([sysMsg, ...state.messages]);
@@ -209,8 +210,8 @@ type BookingFlowConfig = {
 
 function makeBookingFlowAgent(flow: BookingFlowConfig) {
   return async function bookingFlowAgent(state: typeof AgentState.State, config: any) {
-    const queue = config.configurable?.eventQueue as EventQueue;
-    const bookings = config.configurable?.bookings as Booking[] || [];
+    const queue = getEventQueue(config);
+    const bookings = getBookings(config);
 
     if (bookings.length === 0) {
       interruptNoBookings(queue, flow.emptyHistoryThought);
