@@ -3,10 +3,10 @@ import { z } from 'zod';
 import { providers, Provider } from '../data/providers';
 import { sectorCoords } from '../data/sectors';
 import { ServiceCategoryEnum } from '../schemas/common';
-import { EventQueue } from './eventQueue';
+import { getEventQueue, getBookings } from './config';
 import * as crypto from 'crypto';
 import { gemini } from '../lib/gemini';
-import { Booking, BOOKING_STATUSES } from '../schemas/booking';
+import { BOOKING_STATUSES } from '../schemas/booking';
 import { REMINDER_LEAD_MS, REMINDER_LEAD_LABEL } from '../config/constants';
 import { slotMatchesPreference, parseSlotTo24h, dayLabelToOffset } from '../lib/time';
 import { haversineKm } from '../lib/geo';
@@ -14,7 +14,7 @@ import { disambiguationPrompt } from './prompts';
 
 export const searchProviders = tool(
   async ({ category, sector }, config) => {
-    const queue = config.configurable?.eventQueue as EventQueue;
+    const queue = getEventQueue(config);
     queue.push({ type: 'searching', near: sector, category: category as any });
     return providers.filter(p => p.category === category);
   },
@@ -30,7 +30,7 @@ export const searchProviders = tool(
 
 export const rankByDistance = tool(
   async ({ providers: inputProviders, fromSector }, config) => {
-    const queue = config.configurable?.eventQueue as EventQueue;
+    const queue = getEventQueue(config);
     const userCoords = sectorCoords(fromSector);
     if (!userCoords) return { error: 'unknown_sector', sector: fromSector };
 
@@ -86,7 +86,7 @@ export const checkAvailability = tool(
 
 export const confirmBooking = tool(
   async ({ providerId, slot, dayLabel, scheduledTimestamp, distanceKm, reasoning }, config) => {
-    const queue = config.configurable?.eventQueue as EventQueue;
+    const queue = getEventQueue(config);
     const provider = providers.find(p => p.id === providerId);
     if (!provider) return { error: 'unknown_provider', providerId };
 
@@ -130,7 +130,7 @@ export const confirmBooking = tool(
 
 export const scheduleReminder = tool(
   async ({ bookingId, scheduledTimestamp }, config) => {
-    const queue = config.configurable?.eventQueue as EventQueue;
+    const queue = getEventQueue(config);
     
     const at = REMINDER_LEAD_LABEL;
     const atTimestamp = scheduledTimestamp - REMINDER_LEAD_MS;
@@ -154,7 +154,7 @@ export const scheduleReminder = tool(
 
 export const resolveBookingTarget = tool(
   async ({ userPhrase }, config) => {
-    const bookings = (config.configurable?.bookings as Booking[]) || [];
+    const bookings = getBookings(config);
     if (!bookings || bookings.length === 0) return { bookingId: '', summary: 'No bookings available.' };
     
     const structuredModel = gemini.withStructuredOutput(z.object({
@@ -175,7 +175,7 @@ export const resolveBookingTarget = tool(
 
 export const proposeBookingChange = tool(
   async ({ bookingId, changes, reason }, config) => {
-    const queue = config.configurable?.eventQueue as EventQueue;
+    const queue = getEventQueue(config);
     queue.push({ type: 'booking_update', bookingId, changes, reason });
     return { ok: true };
   },
@@ -197,7 +197,7 @@ export const proposeBookingChange = tool(
 
 export const proposeBookingCancellation = tool(
   async ({ bookingId, reason }, config) => {
-    const queue = config.configurable?.eventQueue as EventQueue;
+    const queue = getEventQueue(config);
     queue.push({ type: 'booking_cancel', bookingId, reason });
     return { ok: true };
   },
@@ -213,7 +213,7 @@ export const proposeBookingCancellation = tool(
 
 export const answerBookingQuery = tool(
   async ({ bookingId, summary }, config) => {
-    const queue = config.configurable?.eventQueue as EventQueue;
+    const queue = getEventQueue(config);
     queue.push({ type: 'booking_query', bookingId, summary });
     return { ok: true };
   },
