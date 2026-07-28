@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { logger } from '../lib/logger';
 import { parseList } from '../lib/parseList';
+import { parsePort } from '../lib/parsePort';
 
 /**
  * Single source of truth for environment configuration.
@@ -20,9 +21,8 @@ function required(name: string): string {
 }
 
 function requiredPort(name: string): number {
-  const raw = required(name);
-  const port = Number(raw);
-  if (isNaN(port) || port <= 0 || !Number.isInteger(port)) {
+  const port = parsePort(required(name));
+  if (port === null) {
     logger.error(`FATAL ERROR: ${name} environment variable must be a valid positive integer.`);
     process.exit(1);
   }

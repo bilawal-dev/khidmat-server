@@ -70,7 +70,7 @@ Server starts on `http://localhost:5000` by default.
 |--------|------|
 | `npm run dev` | `tsx watch` — auto-reloads on change |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | `node:test` unit suite (geo, time, sectors, bookings, constants) |
+| `npm test` | `node:test` unit suite (geo, time, sectors, bookings, constants, sse, responseHandler, parseList, parsePort, prompts, logger) |
 | `npm run build` | Compile to `dist/` |
 | `npm start` | Run compiled `dist/index.js` |
 
