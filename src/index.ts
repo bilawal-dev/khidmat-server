@@ -63,8 +63,8 @@ function shutdown(signal: string) {
   }, SHUTDOWN_TIMEOUT_MS).unref();
 }
 
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
+const SHUTDOWN_SIGNALS = ['SIGTERM', 'SIGINT'] as const;
+SHUTDOWN_SIGNALS.forEach((signal) => process.on(signal, () => shutdown(signal)));
 
 // Last-resort visibility: never let a stray rejection or throw die silently.
 process.on('unhandledRejection', (reason) => {
