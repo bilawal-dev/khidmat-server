@@ -25,12 +25,16 @@ export function getOrCreateSession(sessionId: string): { config: RunnableConfig,
   return { config: session.config, isNew };
 }
 
-// Evict sessions that have been idle past their TTL.
-setInterval(() => {
-  const now = Date.now();
+/**
+ * Evict sessions idle past their TTL. Takes `now` so the sweep is a pure,
+ * unit-testable function; the interval below calls it with the current time.
+ */
+export function evictExpiredSessions(now: number = Date.now()): void {
   for (const [id, session] of sessions.entries()) {
     if (now - session.lastAccessed > SESSION_TTL_MS) {
       sessions.delete(id);
     }
   }
-}, SESSION_SWEEP_INTERVAL_MS).unref();
+}
+
+setInterval(() => evictExpiredSessions(), SESSION_SWEEP_INTERVAL_MS).unref();
