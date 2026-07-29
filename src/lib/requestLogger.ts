@@ -1,6 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from './logger';
 
+type LogLevel = 'info' | 'warn' | 'error';
+
+/** Map an HTTP status code to a log level: 5xx → error, 4xx → warn, else info. */
+export function levelForStatus(status: number): LogLevel {
+  if (status >= 500) return 'error';
+  if (status >= 400) return 'warn';
+  return 'info';
+}
+
 /**
  * Logs one line per request when the response finishes, with method, path,
  * status code, and wall-clock duration. Kept dependency-free (no morgan) since
@@ -12,13 +21,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
   res.on('finish', () => {
     const durationMs = Date.now() - start;
     const line = `${req.method} ${req.originalUrl} ${res.statusCode} ${durationMs}ms`;
-    if (res.statusCode >= 500) {
-      logger.error(line);
-    } else if (res.statusCode >= 400) {
-      logger.warn(line);
-    } else {
-      logger.info(line);
-    }
+    logger[levelForStatus(res.statusCode)](line);
   });
 
   next();
