@@ -103,7 +103,8 @@ All optional; filters are ANDed.
 |-------|--------|--------|
 | `category` | `ac` \| `plumber` \| `electrician` \| `tutor` \| `beautician` | Restrict to one service category. |
 | `near` | sector, e.g. `G-13` | Annotate each result with `distanceKm` and default ordering to nearest-first. |
-| `sortBy` | `distance` \| `rating` \| `experience` | Ordering (defaults to `distance` when `near` is set, else `rating`). |
+| `maxPrice` | number | Keep only providers whose lowest tier is at or below this ceiling. |
+| `sortBy` | `distance` \| `rating` \| `experience` \| `price` | Ordering (defaults to `distance` when `near` is set, else `rating`). |
 | `limit` | 1–50 | Cap the number of results returned. |
 
 ### `POST /chat` request body

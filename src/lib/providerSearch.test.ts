@@ -38,6 +38,20 @@ test('sortBy experience ranks the most seasoned provider first', () => {
   assert.equal(results[0].id, 'p004'); // Sajid Plumbing — 12 years
 });
 
+test('maxPrice keeps only providers with an affordable entry price', () => {
+  const results = searchProviders({ category: 'tutor', maxPrice: 2500 });
+  assert.ok(results.length > 0);
+  // Every result must have a tier starting at or below 2500.
+  assert.ok(results.every((p) => Number(p.priceRange.match(/\d+/)![0]) <= 2500));
+  // Ayesha Math Academy starts at 3000, so it must be filtered out.
+  assert.ok(!results.some((p) => p.id === 'p010'));
+});
+
+test('sortBy price ranks the cheapest entry price first', () => {
+  const results = searchProviders({ category: 'ac', sortBy: 'price' });
+  assert.equal(results[0].id, 'p003'); // Khan Cooling — starts at PKR 1000
+});
+
 test('limit caps the number of results', () => {
   const results = searchProviders({ limit: 3 });
   assert.equal(results.length, 3);
