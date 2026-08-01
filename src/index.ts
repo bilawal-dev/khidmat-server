@@ -2,6 +2,7 @@ import { env } from './config/env';
 import express, { Request, Response, NextFunction } from 'express';
 import { handleSuccess, handleError } from './lib/responseHandler';
 import { chatRouter } from './routes/chat';
+import { providersRouter } from './routes/providers';
 import { logger } from './lib/logger';
 import { requestLogger } from './lib/requestLogger';
 import cors from 'cors';
@@ -17,7 +18,7 @@ app.use(requestLogger);
 app.get('/', (_req: Request, res: Response) => {
   return handleSuccess(res, 200, 'Khidmat agent server', {
     service: 'khidmat-server',
-    endpoints: ['GET /health', 'POST /chat'],
+    endpoints: ['GET /health', 'GET /providers', 'POST /chat'],
   });
 });
 
@@ -28,6 +29,7 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
+app.use('/providers', providersRouter);
 app.use('/chat', chatRouter);
 
 // Unmatched routes get a consistent JSON 404 instead of Express's default HTML.

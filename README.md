@@ -43,7 +43,8 @@ src/
 │   ├── sse.ts              SSE headers + writeEvent / writeError
 │   └── time.ts             slot/day parsing helpers (pure, testable)
 ├── routes/
-│   └── chat.ts             POST /chat
+│   ├── chat.ts             POST /chat
+│   └── providers.ts        GET /providers (search/browse directory)
 ├── schemas/
 │   ├── booking.ts          Booking shape + BOOKING_STATUSES (lockstep with mobile)
 │   ├── chat.ts             /chat request shape
@@ -91,7 +92,19 @@ All required vars are validated once on boot in [src/config/env.ts](src/config/e
 | Method | Path | Body | Response |
 |--------|------|------|----------|
 | GET | `/health` | — | `{ success: true, message: 'Health Check Passed', data: { status: 'ok', uptimeSeconds } }` |
+| GET | `/providers` | — | `{ success, message, data: { count, providers } }` — see below |
 | POST | `/chat` | see below | SSE stream of `AgentEvent` |
+
+### `GET /providers` query parameters
+
+All optional; filters are ANDed.
+
+| Param | Values | Effect |
+|-------|--------|--------|
+| `category` | `ac` \| `plumber` \| `electrician` \| `tutor` \| `beautician` | Restrict to one service category. |
+| `near` | sector, e.g. `G-13` | Annotate each result with `distanceKm` and default ordering to nearest-first. |
+| `sortBy` | `distance` \| `rating` \| `experience` | Ordering (defaults to `distance` when `near` is set, else `rating`). |
+| `limit` | 1–50 | Cap the number of results returned. |
 
 ### `POST /chat` request body
 
