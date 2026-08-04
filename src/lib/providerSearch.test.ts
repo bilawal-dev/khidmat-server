@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { searchProviders } from './providerSearch';
+import { searchProviders, getProviderById } from './providerSearch';
 import { providers } from '../data/providers';
 
 test('with no query, returns every provider ranked by rating', () => {
@@ -60,4 +60,14 @@ test('limit caps the number of results', () => {
 test('a non-positive limit is ignored', () => {
   const results = searchProviders({ limit: 0 });
   assert.equal(results.length, providers.length);
+});
+
+test('getProviderById returns the matching provider', () => {
+  const provider = getProviderById('p001');
+  assert.ok(provider);
+  assert.equal(provider?.name, 'Ali AC Services');
+});
+
+test('getProviderById returns null for an unknown id', () => {
+  assert.equal(getProviderById('nope'), null);
 });
