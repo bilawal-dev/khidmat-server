@@ -43,6 +43,7 @@ src/
 │   ├── sse.ts              SSE headers + writeEvent / writeError
 │   └── time.ts             slot/day parsing helpers (pure, testable)
 ├── routes/
+│   ├── categories.ts       GET /categories (directory overview)
 │   ├── chat.ts             POST /chat
 │   └── providers.ts        GET /providers (search/browse directory)
 ├── schemas/
@@ -92,6 +93,7 @@ All required vars are validated once on boot in [src/config/env.ts](src/config/e
 | Method | Path | Body | Response |
 |--------|------|------|----------|
 | GET | `/health` | — | `{ success: true, message: 'Health Check Passed', data: { status: 'ok', uptimeSeconds } }` |
+| GET | `/categories` | — | `{ success, message, data: { count, categories } }` — per-category count, mean rating, entry price |
 | GET | `/providers` | — | `{ success, message, data: { count, providers } }` — see below |
 | GET | `/providers/:id` | — | `{ success, message, data: { provider } }` (404 when unknown) |
 | POST | `/chat` | see below | SSE stream of `AgentEvent` |
