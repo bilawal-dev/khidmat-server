@@ -45,6 +45,11 @@ export function searchProviders(query: ProviderSearchQuery = {}): RankedProvider
   return typeof limit === 'number' && limit > 0 ? results.slice(0, limit) : results;
 }
 
+/** Look up a single provider by its id, or null when no provider matches. */
+export function getProviderById(id: string): Provider | null {
+  return providers.find((p) => p.id === id) ?? null;
+}
+
 /** Order ranked providers by the chosen key, best-first, with sensible tiebreaks. */
 function sortProviders(list: RankedProvider[], sortBy: ProviderSortBy): RankedProvider[] {
   const byRating = (a: RankedProvider, b: RankedProvider) =>

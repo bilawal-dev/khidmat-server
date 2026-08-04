@@ -93,6 +93,7 @@ All required vars are validated once on boot in [src/config/env.ts](src/config/e
 |--------|------|------|----------|
 | GET | `/health` | — | `{ success: true, message: 'Health Check Passed', data: { status: 'ok', uptimeSeconds } }` |
 | GET | `/providers` | — | `{ success, message, data: { count, providers } }` — see below |
+| GET | `/providers/:id` | — | `{ success, message, data: { provider } }` (404 when unknown) |
 | POST | `/chat` | see below | SSE stream of `AgentEvent` |
 
 ### `GET /providers` query parameters
