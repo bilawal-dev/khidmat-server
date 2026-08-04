@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { ServiceCategoryEnum } from '../schemas/common';
-import { searchProviders, type ProviderSortBy } from '../lib/providerSearch';
+import { searchProviders, getProviderById, type ProviderSortBy } from '../lib/providerSearch';
 import type { ServiceCategory } from '../data/providers';
 import { handleSuccess, handleError } from '../lib/responseHandler';
 
@@ -41,4 +41,18 @@ providersRouter.get('/', (req: Request, res: Response) => {
     count: results.length,
     providers: results,
   });
+});
+
+/**
+ * GET /providers/:id — fetch a single provider by id. Returns a 404 in the
+ * standard envelope when no provider matches, so clients can branch on
+ * `success` instead of parsing status codes.
+ */
+providersRouter.get('/:id', (req: Request, res: Response) => {
+  const provider = getProviderById(req.params.id);
+  if (!provider) {
+    return handleError(res, 404, `Provider not found: ${req.params.id}`);
+  }
+
+  return handleSuccess(res, 200, 'Provider found', { provider });
 });
