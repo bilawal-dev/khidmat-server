@@ -4,6 +4,7 @@ import { handleSuccess, handleError } from './lib/responseHandler';
 import { chatRouter } from './routes/chat';
 import { providersRouter } from './routes/providers';
 import { categoriesRouter } from './routes/categories';
+import { statsRouter } from './routes/stats';
 import { logger } from './lib/logger';
 import { requestLogger } from './lib/requestLogger';
 import cors from 'cors';
@@ -19,7 +20,7 @@ app.use(requestLogger);
 app.get('/', (_req: Request, res: Response) => {
   return handleSuccess(res, 200, 'Khidmat agent server', {
     service: 'khidmat-server',
-    endpoints: ['GET /health', 'GET /categories', 'GET /providers', 'POST /chat'],
+    endpoints: ['GET /health', 'GET /stats', 'GET /categories', 'GET /providers', 'POST /chat'],
   });
 });
 
@@ -30,6 +31,7 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
+app.use('/stats', statsRouter);
 app.use('/categories', categoriesRouter);
 app.use('/providers', providersRouter);
 app.use('/chat', chatRouter);

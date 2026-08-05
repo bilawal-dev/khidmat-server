@@ -45,7 +45,8 @@ src/
 ├── routes/
 │   ├── categories.ts       GET /categories (directory overview)
 │   ├── chat.ts             POST /chat
-│   └── providers.ts        GET /providers (search/browse directory)
+│   ├── providers.ts        GET /providers (search/browse directory)
+│   └── stats.ts            GET /stats (whole-directory totals)
 ├── schemas/
 │   ├── booking.ts          Booking shape + BOOKING_STATUSES (lockstep with mobile)
 │   ├── chat.ts             /chat request shape
@@ -93,6 +94,7 @@ All required vars are validated once on boot in [src/config/env.ts](src/config/e
 | Method | Path | Body | Response |
 |--------|------|------|----------|
 | GET | `/health` | — | `{ success: true, message: 'Health Check Passed', data: { status: 'ok', uptimeSeconds } }` |
+| GET | `/stats` | — | `{ success, message, data: { totalProviders, totalCategories, sectorsCovered, avgRating, cheapestFrom } }` |
 | GET | `/categories` | — | `{ success, message, data: { count, categories } }` — per-category count, mean rating, entry price |
 | GET | `/providers` | — | `{ success, message, data: { count, providers } }` — see below |
 | GET | `/providers/:id` | — | `{ success, message, data: { provider } }` (404 when unknown) |
