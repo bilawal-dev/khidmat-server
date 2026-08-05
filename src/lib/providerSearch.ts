@@ -2,6 +2,7 @@ import { providers, type Provider, type ServiceCategory } from '../data/provider
 import { sectorCoords } from '../data/sectors';
 import { haversineKm } from './geo';
 import { isAffordable, minPrice } from './price';
+import { hasSlot } from './availability';
 
 /** How results can be ordered. `distance` requires a sector to measure from. */
 export type ProviderSortBy = 'distance' | 'rating' | 'experience' | 'price';
@@ -12,6 +13,8 @@ export type ProviderSearchQuery = {
   near?: string;
   /** Keep only providers whose lowest price is at or below this ceiling. */
   maxPrice?: number;
+  /** Keep only providers offering a slot matching this time (e.g. "2pm"). */
+  availableAt?: string;
   sortBy?: ProviderSortBy;
   limit?: number;
 };
@@ -31,13 +34,15 @@ function withDistance(provider: Provider, origin?: { lat: number; lng: number })
  * so a caller never gets an arbitrarily ordered list.
  */
 export function searchProviders(query: ProviderSearchQuery = {}): RankedProvider[] {
-  const { category, near, maxPrice, sortBy = near ? 'distance' : 'rating', limit } = query;
+  const { category, near, maxPrice, availableAt, sortBy = near ? 'distance' : 'rating', limit } =
+    query;
 
   const origin = near ? sectorCoords(near) : undefined;
 
   let results = providers
     .filter((p) => (category ? p.category === category : true))
     .filter((p) => (maxPrice != null ? isAffordable(p.priceRange, maxPrice) : true))
+    .filter((p) => (availableAt ? hasSlot(p, availableAt) : true))
     .map((p) => withDistance(p, origin));
 
   results = sortProviders(results, sortBy);

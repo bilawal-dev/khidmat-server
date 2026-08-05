@@ -13,6 +13,7 @@ const ProviderQuerySchema = z.object({
   category: ServiceCategoryEnum.optional(),
   near: z.string().trim().min(1).optional(),
   maxPrice: z.coerce.number().positive().optional(),
+  availableAt: z.string().trim().min(1).optional(),
   sortBy: z.enum(['distance', 'rating', 'experience', 'price']).optional(),
   limit: z.coerce.number().int().positive().max(MAX_LIMIT).optional(),
 });
@@ -28,11 +29,12 @@ providersRouter.get('/', (req: Request, res: Response) => {
     return handleError(res, 400, 'Invalid query parameters', parsed.error.format());
   }
 
-  const { category, near, maxPrice, sortBy, limit } = parsed.data;
+  const { category, near, maxPrice, availableAt, sortBy, limit } = parsed.data;
   const results = searchProviders({
     category: category as ServiceCategory | undefined,
     near,
     maxPrice,
+    availableAt,
     sortBy: sortBy as ProviderSortBy | undefined,
     limit,
   });

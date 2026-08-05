@@ -52,6 +52,14 @@ test('sortBy price ranks the cheapest entry price first', () => {
   assert.equal(results[0].id, 'p003'); // Khan Cooling — starts at PKR 1000
 });
 
+test('availableAt keeps only providers offering that slot', () => {
+  const results = searchProviders({ category: 'ac', availableAt: '2pm' });
+  assert.ok(results.length > 0);
+  assert.ok(results.every((p) => p.availableSlots.some((s) => /2:00 PM/.test(s))));
+  // Khan Cooling (p003) only has 9/1/5 — no 2 PM — so it must be excluded.
+  assert.ok(!results.some((p) => p.id === 'p003'));
+});
+
 test('limit caps the number of results', () => {
   const results = searchProviders({ limit: 3 });
   assert.equal(results.length, 3);
