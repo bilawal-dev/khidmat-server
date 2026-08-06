@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { searchProviders, getProviderById } from './providerSearch';
+import { searchProviders, getProviderById, getSimilarProviders } from './providerSearch';
 import { providers } from '../data/providers';
 
 test('with no query, returns every provider ranked by rating', () => {
@@ -78,4 +78,19 @@ test('getProviderById returns the matching provider', () => {
 
 test('getProviderById returns null for an unknown id', () => {
   assert.equal(getProviderById('nope'), null);
+});
+
+test('getSimilarProviders returns same-category alternatives, excluding self', () => {
+  const similar = getSimilarProviders('p001'); // Ali AC Services (ac, G-13)
+  assert.ok(similar.length > 0);
+  assert.ok(similar.every((p) => p.category === 'ac'));
+  assert.ok(!similar.some((p) => p.id === 'p001'));
+});
+
+test('getSimilarProviders respects the limit', () => {
+  assert.equal(getSimilarProviders('p001', 1).length, 1);
+});
+
+test('getSimilarProviders is empty for an unknown id', () => {
+  assert.deepEqual(getSimilarProviders('nope'), []);
 });

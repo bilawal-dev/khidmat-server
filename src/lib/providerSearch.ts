@@ -55,6 +55,24 @@ export function getProviderById(id: string): Provider | null {
   return providers.find((p) => p.id === id) ?? null;
 }
 
+/**
+ * Alternatives to a given provider: same category, ranked by proximity to that
+ * provider's sector, excluding the provider itself. Returns [] when the id is
+ * unknown so callers can treat "no such provider" and "no alternatives" alike.
+ */
+export function getSimilarProviders(id: string, limit = 3): RankedProvider[] {
+  const target = getProviderById(id);
+  if (!target) return [];
+
+  return searchProviders({
+    category: target.category,
+    near: target.sector,
+    sortBy: 'distance',
+  })
+    .filter((p) => p.id !== target.id)
+    .slice(0, limit);
+}
+
 /** Order ranked providers by the chosen key, best-first, with sensible tiebreaks. */
 function sortProviders(list: RankedProvider[], sortBy: ProviderSortBy): RankedProvider[] {
   const byRating = (a: RankedProvider, b: RankedProvider) =>
