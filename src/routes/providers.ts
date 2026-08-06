@@ -1,7 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { ServiceCategoryEnum } from '../schemas/common';
-import { searchProviders, getProviderById, type ProviderSortBy } from '../lib/providerSearch';
+import {
+  searchProviders,
+  getProviderById,
+  getSimilarProviders,
+  type ProviderSortBy,
+} from '../lib/providerSearch';
 import type { ServiceCategory } from '../data/providers';
 import { handleSuccess, handleError } from '../lib/responseHandler';
 
@@ -42,6 +47,23 @@ providersRouter.get('/', (req: Request, res: Response) => {
   return handleSuccess(res, 200, `Found ${results.length} providers`, {
     count: results.length,
     providers: results,
+  });
+});
+
+/**
+ * GET /providers/:id/similar — same-category alternatives near the provider.
+ * 404s when the provider id itself is unknown; an empty list means the provider
+ * exists but has no alternatives.
+ */
+providersRouter.get('/:id/similar', (req: Request, res: Response) => {
+  if (!getProviderById(req.params.id)) {
+    return handleError(res, 404, `Provider not found: ${req.params.id}`);
+  }
+
+  const similar = getSimilarProviders(req.params.id);
+  return handleSuccess(res, 200, `Found ${similar.length} similar providers`, {
+    count: similar.length,
+    providers: similar,
   });
 });
 

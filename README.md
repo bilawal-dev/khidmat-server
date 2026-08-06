@@ -100,6 +100,7 @@ All required vars are validated once on boot in [src/config/env.ts](src/config/e
 | GET | `/categories` | — | `{ success, message, data: { count, categories } }` — per-category count, mean rating, entry price |
 | GET | `/providers` | — | `{ success, message, data: { count, providers } }` — see below |
 | GET | `/providers/:id` | — | `{ success, message, data: { provider } }` (404 when unknown) |
+| GET | `/providers/:id/similar` | — | `{ success, message, data: { count, providers } }` — same-category nearby alternatives (404 when unknown) |
 | POST | `/chat` | see below | SSE stream of `AgentEvent` |
 
 ### `GET /providers` query parameters
