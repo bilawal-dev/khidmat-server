@@ -46,6 +46,7 @@ src/
 │   ├── categories.ts       GET /categories (directory overview)
 │   ├── chat.ts             POST /chat
 │   ├── providers.ts        GET /providers (search/browse directory)
+│   ├── sectors.ts          GET /sectors (browse areas covered)
 │   └── stats.ts            GET /stats (whole-directory totals)
 ├── schemas/
 │   ├── booking.ts          Booking shape + BOOKING_STATUSES (lockstep with mobile)
@@ -95,6 +96,7 @@ All required vars are validated once on boot in [src/config/env.ts](src/config/e
 |--------|------|------|----------|
 | GET | `/health` | — | `{ success: true, message: 'Health Check Passed', data: { status: 'ok', uptimeSeconds } }` |
 | GET | `/stats` | — | `{ success, message, data: { totalProviders, totalCategories, sectorsCovered, avgRating, cheapestFrom } }` |
+| GET | `/sectors` | — | `{ success, message, data: { count, sectors } }` — per-sector provider count, coords, categories |
 | GET | `/categories` | — | `{ success, message, data: { count, categories } }` — per-category count, mean rating, entry price |
 | GET | `/providers` | — | `{ success, message, data: { count, providers } }` — see below |
 | GET | `/providers/:id` | — | `{ success, message, data: { provider } }` (404 when unknown) |
