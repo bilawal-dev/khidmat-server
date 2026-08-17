@@ -114,7 +114,8 @@ All optional; filters are ANDed.
 | `maxPrice` | number | Keep only providers whose lowest tier is at or below this ceiling. |
 | `availableAt` | time, e.g. `2pm`, `14:00` | Keep only providers offering a slot at that time (format-tolerant). |
 | `sortBy` | `distance` \| `rating` \| `experience` \| `price` | Ordering (defaults to `distance` when `near` is set, else `rating`). |
-| `limit` | 1–50 | Cap the number of results returned. |
+| `limit` | 1–50 | Page size. |
+| `offset` | ≥ 0 | Items to skip (for paging). Response includes `total`, `offset`, and `hasMore`. |
 
 ### `POST /chat` request body
 

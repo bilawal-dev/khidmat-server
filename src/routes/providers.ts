@@ -8,6 +8,7 @@ import {
   type ProviderSortBy,
 } from '../lib/providerSearch';
 import type { ServiceCategory } from '../data/providers';
+import { paginate } from '../lib/paginate';
 import { handleSuccess, handleError } from '../lib/responseHandler';
 
 export const providersRouter = Router();
@@ -21,6 +22,7 @@ const ProviderQuerySchema = z.object({
   availableAt: z.string().trim().min(1).optional(),
   sortBy: z.enum(['distance', 'rating', 'experience', 'price']).optional(),
   limit: z.coerce.number().int().positive().max(MAX_LIMIT).optional(),
+  offset: z.coerce.number().int().nonnegative().optional(),
 });
 
 /**
@@ -34,19 +36,24 @@ providersRouter.get('/', (req: Request, res: Response) => {
     return handleError(res, 400, 'Invalid query parameters', parsed.error.format());
   }
 
-  const { category, near, maxPrice, availableAt, sortBy, limit } = parsed.data;
-  const results = searchProviders({
+  const { category, near, maxPrice, availableAt, sortBy, limit, offset } = parsed.data;
+  // Rank the full matching set, then slice it — so `total`/`hasMore` reflect all
+  // matches, not just the returned page.
+  const ranked = searchProviders({
     category: category as ServiceCategory | undefined,
     near,
     maxPrice,
     availableAt,
     sortBy: sortBy as ProviderSortBy | undefined,
-    limit,
   });
+  const page = paginate(ranked, { offset, limit });
 
-  return handleSuccess(res, 200, `Found ${results.length} providers`, {
-    count: results.length,
-    providers: results,
+  return handleSuccess(res, 200, `Found ${page.total} providers`, {
+    count: page.items.length,
+    total: page.total,
+    offset: page.offset,
+    hasMore: page.hasMore,
+    providers: page.items,
   });
 });
 
