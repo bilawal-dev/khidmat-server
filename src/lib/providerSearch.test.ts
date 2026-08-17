@@ -60,6 +60,24 @@ test('availableAt keeps only providers offering that slot', () => {
   assert.ok(!results.some((p) => p.id === 'p003'));
 });
 
+test('minRating keeps only providers at or above the threshold', () => {
+  const results = searchProviders({ minRating: 4.7 });
+  assert.ok(results.length > 0);
+  assert.ok(results.every((p) => p.rating >= 4.7));
+});
+
+test('minExperience keeps only sufficiently experienced providers', () => {
+  const results = searchProviders({ minExperience: 10 });
+  assert.ok(results.length > 0);
+  assert.ok(results.every((p) => p.yearsExperience >= 10));
+});
+
+test('quality filters compose with category', () => {
+  const results = searchProviders({ category: 'ac', minRating: 4.6 });
+  assert.ok(results.every((p) => p.category === 'ac' && p.rating >= 4.6));
+  assert.ok(results.some((p) => p.id === 'p001')); // Ali AC Services, 4.7
+});
+
 test('limit caps the number of results', () => {
   const results = searchProviders({ limit: 3 });
   assert.equal(results.length, 3);

@@ -15,6 +15,10 @@ export type ProviderSearchQuery = {
   maxPrice?: number;
   /** Keep only providers offering a slot matching this time (e.g. "2pm"). */
   availableAt?: string;
+  /** Keep only providers with at least this rating. */
+  minRating?: number;
+  /** Keep only providers with at least this many years of experience. */
+  minExperience?: number;
   sortBy?: ProviderSortBy;
   limit?: number;
 };
@@ -34,8 +38,16 @@ function withDistance(provider: Provider, origin?: { lat: number; lng: number })
  * so a caller never gets an arbitrarily ordered list.
  */
 export function searchProviders(query: ProviderSearchQuery = {}): RankedProvider[] {
-  const { category, near, maxPrice, availableAt, sortBy = near ? 'distance' : 'rating', limit } =
-    query;
+  const {
+    category,
+    near,
+    maxPrice,
+    availableAt,
+    minRating,
+    minExperience,
+    sortBy = near ? 'distance' : 'rating',
+    limit,
+  } = query;
 
   const origin = near ? sectorCoords(near) : undefined;
 
@@ -43,6 +55,8 @@ export function searchProviders(query: ProviderSearchQuery = {}): RankedProvider
     .filter((p) => (category ? p.category === category : true))
     .filter((p) => (maxPrice != null ? isAffordable(p.priceRange, maxPrice) : true))
     .filter((p) => (availableAt ? hasSlot(p, availableAt) : true))
+    .filter((p) => (minRating != null ? p.rating >= minRating : true))
+    .filter((p) => (minExperience != null ? p.yearsExperience >= minExperience : true))
     .map((p) => withDistance(p, origin));
 
   results = sortProviders(results, sortBy);

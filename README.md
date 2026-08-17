@@ -113,6 +113,8 @@ All optional; filters are ANDed.
 | `near` | sector, e.g. `G-13` | Annotate each result with `distanceKm` and default ordering to nearest-first. |
 | `maxPrice` | number | Keep only providers whose lowest tier is at or below this ceiling. |
 | `availableAt` | time, e.g. `2pm`, `14:00` | Keep only providers offering a slot at that time (format-tolerant). |
+| `minRating` | 0–5 | Keep only providers rated at or above this. |
+| `minExperience` | ≥ 0 | Keep only providers with at least this many years of experience. |
 | `sortBy` | `distance` \| `rating` \| `experience` \| `price` | Ordering (defaults to `distance` when `near` is set, else `rating`). |
 | `limit` | 1–50 | Page size. |
 | `offset` | ≥ 0 | Items to skip (for paging). Response includes `total`, `offset`, and `hasMore`. |
