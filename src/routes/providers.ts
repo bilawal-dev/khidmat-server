@@ -20,6 +20,8 @@ const ProviderQuerySchema = z.object({
   near: z.string().trim().min(1).optional(),
   maxPrice: z.coerce.number().positive().optional(),
   availableAt: z.string().trim().min(1).optional(),
+  minRating: z.coerce.number().min(0).max(5).optional(),
+  minExperience: z.coerce.number().int().nonnegative().optional(),
   sortBy: z.enum(['distance', 'rating', 'experience', 'price']).optional(),
   limit: z.coerce.number().int().positive().max(MAX_LIMIT).optional(),
   offset: z.coerce.number().int().nonnegative().optional(),
@@ -36,7 +38,8 @@ providersRouter.get('/', (req: Request, res: Response) => {
     return handleError(res, 400, 'Invalid query parameters', parsed.error.format());
   }
 
-  const { category, near, maxPrice, availableAt, sortBy, limit, offset } = parsed.data;
+  const { category, near, maxPrice, availableAt, minRating, minExperience, sortBy, limit, offset } =
+    parsed.data;
   // Rank the full matching set, then slice it — so `total`/`hasMore` reflect all
   // matches, not just the returned page.
   const ranked = searchProviders({
@@ -44,6 +47,8 @@ providersRouter.get('/', (req: Request, res: Response) => {
     near,
     maxPrice,
     availableAt,
+    minRating,
+    minExperience,
     sortBy: sortBy as ProviderSortBy | undefined,
   });
   const page = paginate(ranked, { offset, limit });
