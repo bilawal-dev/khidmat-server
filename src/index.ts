@@ -7,6 +7,7 @@ import { categoriesRouter } from './routes/categories';
 import { statsRouter } from './routes/stats';
 import { sectorsRouter } from './routes/sectors';
 import { logger } from './lib/logger';
+import { requestId } from './lib/requestId';
 import { requestLogger } from './lib/requestLogger';
 import cors from 'cors';
 
@@ -16,6 +17,8 @@ const app = express();
 // stay permissive (default) since the mobile client sends no browser Origin.
 app.use(cors(env.CORS_ORIGINS ? { origin: env.CORS_ORIGINS } : undefined));
 app.use(express.json({ limit: '1mb' }));
+// Assign/echo a correlation id before logging so each line carries it.
+app.use(requestId);
 app.use(requestLogger);
 
 app.get('/', (_req: Request, res: Response) => {

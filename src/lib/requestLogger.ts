@@ -20,7 +20,10 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
 
   res.on('finish', () => {
     const durationMs = Date.now() - start;
-    const line = `${req.method} ${req.originalUrl} ${res.statusCode} ${durationMs}ms`;
+    // requestId middleware runs first; fall back gracefully if it didn't.
+    const id = (req as Request & { requestId?: string }).requestId;
+    const suffix = id ? ` [${id}]` : '';
+    const line = `${req.method} ${req.originalUrl} ${res.statusCode} ${durationMs}ms${suffix}`;
     logger[levelForStatus(res.statusCode)](line);
   });
 
