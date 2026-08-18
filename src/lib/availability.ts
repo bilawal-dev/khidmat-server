@@ -35,3 +35,37 @@ export function hasSlot(provider: Provider, requested: string): boolean {
   if (!target) return false;
   return provider.availableSlots.some((slot) => normalizeSlot(slot) === target);
 }
+
+/** Minutes since midnight for a slot/time string, or null when unparseable. */
+export function slotMinutes(raw: string): number | null {
+  const canonical = normalizeSlot(raw);
+  if (!canonical) return null;
+
+  const match = canonical.match(/^(\d{1,2}):(\d{2})(am|pm)$/);
+  if (!match) return null;
+
+  let hour = Number(match[1]) % 12; // 12am → 0, 12pm handled below
+  const minute = Number(match[2]);
+  if (match[3] === 'pm') hour += 12;
+
+  return hour * 60 + minute;
+}
+
+/** A provider slot in display, canonical, and machine-sortable forms. */
+export type DescribedSlot = { display: string; normalized: string; minutes: number };
+
+/**
+ * Describe a provider's slots for API consumers: each slot's original display
+ * string plus its canonical form and minutes-since-midnight, sorted by time.
+ * Unparseable slots are dropped so callers always get well-formed data.
+ */
+export function describeSlots(provider: Provider): DescribedSlot[] {
+  return provider.availableSlots
+    .map((display) => {
+      const normalized = normalizeSlot(display);
+      const minutes = slotMinutes(display);
+      return normalized && minutes != null ? { display, normalized, minutes } : null;
+    })
+    .filter((s): s is DescribedSlot => s !== null)
+    .sort((a, b) => a.minutes - b.minutes);
+}

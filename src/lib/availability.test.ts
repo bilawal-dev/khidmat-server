@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeSlot, hasSlot } from './availability';
+import { normalizeSlot, hasSlot, slotMinutes, describeSlots } from './availability';
 import type { Provider } from '../data/providers';
 
 test('normalizeSlot canonicalizes 12-hour strings', () => {
@@ -34,4 +34,26 @@ test('hasSlot matches regardless of input format', () => {
 test('hasSlot is false when the provider lacks the slot', () => {
   assert.equal(hasSlot(stub, '9am'), false);
   assert.equal(hasSlot(stub, 'whenever'), false);
+});
+
+test('slotMinutes converts to minutes since midnight', () => {
+  assert.equal(slotMinutes('12:00 AM'), 0);
+  assert.equal(slotMinutes('9:30 AM'), 570);
+  assert.equal(slotMinutes('2:00 PM'), 840);
+  assert.equal(slotMinutes('12:00 PM'), 720);
+  assert.equal(slotMinutes('nonsense'), null);
+});
+
+test('describeSlots returns sorted, well-formed slot descriptors', () => {
+  const messy = {
+    id: 'y',
+    availableSlots: ['6:00 PM', '10:00 AM', 'later'],
+  } as unknown as Provider;
+  const described = describeSlots(messy);
+  assert.deepEqual(
+    described.map((s) => s.display),
+    ['10:00 AM', '6:00 PM'], // sorted by time, unparseable dropped
+  );
+  assert.equal(described[0].normalized, '10:00am');
+  assert.equal(described[0].minutes, 600);
 });

@@ -9,6 +9,7 @@ import {
 } from '../lib/providerSearch';
 import type { ServiceCategory } from '../data/providers';
 import { paginate } from '../lib/paginate';
+import { describeSlots } from '../lib/availability';
 import { handleSuccess, handleError } from '../lib/responseHandler';
 
 export const providersRouter = Router();
@@ -76,6 +77,24 @@ providersRouter.get('/:id/similar', (req: Request, res: Response) => {
   return handleSuccess(res, 200, `Found ${similar.length} similar providers`, {
     count: similar.length,
     providers: similar,
+  });
+});
+
+/**
+ * GET /providers/:id/slots — the provider's available slots in display,
+ * canonical, and minutes-since-midnight forms, sorted by time. 404s when the
+ * provider id is unknown.
+ */
+providersRouter.get('/:id/slots', (req: Request, res: Response) => {
+  const provider = getProviderById(req.params.id);
+  if (!provider) {
+    return handleError(res, 404, `Provider not found: ${req.params.id}`);
+  }
+
+  const slots = describeSlots(provider);
+  return handleSuccess(res, 200, `Found ${slots.length} slots`, {
+    count: slots.length,
+    slots,
   });
 });
 
