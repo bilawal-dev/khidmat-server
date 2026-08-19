@@ -60,6 +60,22 @@ test('availableAt keeps only providers offering that slot', () => {
   assert.ok(!results.some((p) => p.id === 'p003'));
 });
 
+test('q matches provider name, case-insensitively', () => {
+  const results = searchProviders({ q: 'cool' });
+  assert.ok(results.some((p) => p.id === 'p002')); // CoolFix Islamabad
+  assert.ok(results.every((p) => /cool/i.test(`${p.name} ${p.category} ${p.sector}`)));
+});
+
+test('q matches by sector', () => {
+  const results = searchProviders({ q: 'g-13' });
+  assert.ok(results.length > 0);
+  assert.ok(results.every((p) => p.sector.toLowerCase().includes('g-13')));
+});
+
+test('q with no matches returns an empty list', () => {
+  assert.deepEqual(searchProviders({ q: 'zzznomatch' }), []);
+});
+
 test('minRating keeps only providers at or above the threshold', () => {
   const results = searchProviders({ minRating: 4.7 });
   assert.ok(results.length > 0);
