@@ -18,6 +18,7 @@ const MAX_LIMIT = 50;
 
 const ProviderQuerySchema = z.object({
   category: ServiceCategoryEnum.optional(),
+  q: z.string().trim().min(1).optional(),
   near: z.string().trim().min(1).optional(),
   maxPrice: z.coerce.number().positive().optional(),
   availableAt: z.string().trim().min(1).optional(),
@@ -39,12 +40,13 @@ providersRouter.get('/', (req: Request, res: Response) => {
     return handleError(res, 400, 'Invalid query parameters', parsed.error.format());
   }
 
-  const { category, near, maxPrice, availableAt, minRating, minExperience, sortBy, limit, offset } =
+  const { category, q, near, maxPrice, availableAt, minRating, minExperience, sortBy, limit, offset } =
     parsed.data;
   // Rank the full matching set, then slice it — so `total`/`hasMore` reflect all
   // matches, not just the returned page.
   const ranked = searchProviders({
     category: category as ServiceCategory | undefined,
+    q,
     near,
     maxPrice,
     availableAt,
