@@ -10,6 +10,7 @@ import {
 import type { ServiceCategory } from '../data/providers';
 import { paginate } from '../lib/paginate';
 import { describeSlots } from '../lib/availability';
+import { providerReviews } from '../lib/providerReviews';
 import { handleSuccess, handleError } from '../lib/responseHandler';
 
 export const providersRouter = Router();
@@ -98,6 +99,20 @@ providersRouter.get('/:id/slots', (req: Request, res: Response) => {
     count: slots.length,
     slots,
   });
+});
+
+/**
+ * GET /providers/:id/reviews — a deterministic review summary (average, star
+ * breakdown, sample snippets) synthesized from the provider's rating and review
+ * count. 404s when the provider id is unknown.
+ */
+providersRouter.get('/:id/reviews', (req: Request, res: Response) => {
+  const provider = getProviderById(req.params.id);
+  if (!provider) {
+    return handleError(res, 404, `Provider not found: ${req.params.id}`);
+  }
+
+  return handleSuccess(res, 200, 'Provider reviews', providerReviews(provider));
 });
 
 /**

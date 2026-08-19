@@ -102,6 +102,7 @@ All required vars are validated once on boot in [src/config/env.ts](src/config/e
 | GET | `/providers/:id` | — | `{ success, message, data: { provider } }` (404 when unknown) |
 | GET | `/providers/:id/similar` | — | `{ success, message, data: { count, providers } }` — same-category nearby alternatives (404 when unknown) |
 | GET | `/providers/:id/slots` | — | `{ success, message, data: { count, slots } }` — slots as `{ display, normalized, minutes }`, time-sorted (404 when unknown) |
+| GET | `/providers/:id/reviews` | — | `{ success, message, data: { average, total, breakdown, samples } }` — deterministic review summary (404 when unknown) |
 | POST | `/chat` | see below | SSE stream of `AgentEvent` |
 
 ### `GET /providers` query parameters
