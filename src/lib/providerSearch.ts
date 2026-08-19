@@ -9,6 +9,8 @@ export type ProviderSortBy = 'distance' | 'rating' | 'experience' | 'price';
 
 export type ProviderSearchQuery = {
   category?: ServiceCategory;
+  /** Free-text query matched against name, category, and sector. */
+  q?: string;
   /** Sector to rank by proximity to (also enables `sortBy: 'distance'`). */
   near?: string;
   /** Keep only providers whose lowest price is at or below this ceiling. */
@@ -26,6 +28,12 @@ export type ProviderSearchQuery = {
 /** A provider annotated with its distance from the requested sector (if any). */
 export type RankedProvider = Provider & { distanceKm: number | null };
 
+/** Case-insensitive substring match of an already-lowercased needle. */
+function matchesText(provider: Provider, needle: string): boolean {
+  const haystack = `${provider.name} ${provider.category} ${provider.sector}`.toLowerCase();
+  return haystack.includes(needle);
+}
+
 /** Attach a distance to `near`'s coordinates, or null when it can't be resolved. */
 function withDistance(provider: Provider, origin?: { lat: number; lng: number }): RankedProvider {
   const distanceKm = origin ? Math.round(haversineKm(origin, provider.coords) * 10) / 10 : null;
@@ -40,6 +48,7 @@ function withDistance(provider: Provider, origin?: { lat: number; lng: number })
 export function searchProviders(query: ProviderSearchQuery = {}): RankedProvider[] {
   const {
     category,
+    q,
     near,
     maxPrice,
     availableAt,
@@ -50,9 +59,11 @@ export function searchProviders(query: ProviderSearchQuery = {}): RankedProvider
   } = query;
 
   const origin = near ? sectorCoords(near) : undefined;
+  const needle = q?.trim().toLowerCase();
 
   let results = providers
     .filter((p) => (category ? p.category === category : true))
+    .filter((p) => (needle ? matchesText(p, needle) : true))
     .filter((p) => (maxPrice != null ? isAffordable(p.priceRange, maxPrice) : true))
     .filter((p) => (availableAt ? hasSlot(p, availableAt) : true))
     .filter((p) => (minRating != null ? p.rating >= minRating : true))
